@@ -3,6 +3,7 @@
 Mirrors api-colegio-smart: JwtService (HS256, issuer and audience required), JwtAuthFilter (rejects tokens issued
 before the last password change) and RoleGuard (role per endpoint, data scoped to the token's institution).
 """
+import logging
 import secrets
 import time
 from dataclasses import dataclass, field
@@ -22,6 +23,8 @@ STAFF = (DOCENTE, DIRECTIVO, EQUIPO_PIE)
 NEVER_CHANGED = 0
 # Module key in api-colegio-smart (permissions / plan_type_permissions), embedded in the JWT at login
 PERMISSION = "lectura"
+
+log = logging.getLogger("lectura.auth")
 
 
 
@@ -73,6 +76,8 @@ def decode_token(token: str) -> dict:
                           issuer=settings.jwt_issuer, audience=settings.jwt_audience,
                           options={"require": ["exp", "iss", "aud"]})
     except jwt.PyJWTError as e:
+        # like JwtAuthFilter: the reason, never the token
+        log.warning("[AUTH] invalid token: %s: %s", type(e).__name__, e)
         raise _unauthorized() from e
 
 
@@ -95,9 +100,13 @@ def current_user(request: Request) -> AuthContext:
         header = request.headers.get("Authorization", "")
         token = header[7:] if header.startswith("Bearer ") else None
     if not token:
+        log.warning("[AUTH] no auth cookie | %s %s | cookies=%s", request.method, request.url.path,
+                    sorted(request.cookies))
         raise _unauthorized()
     claims = decode_token(token)
     if claims.get("mustChangePassword") or claims.get("enabled") is False or _is_stale(claims):
+        log.warning("[AUTH] rejected | userId=%s mustChangePassword=%s enabled=%s stale=%s", claims.get("userId"),
+                    claims.get("mustChangePassword"), claims.get("enabled"), _is_stale(claims))
         raise _unauthorized()
     if claims.get("institutionId") is None or claims.get("userId") is None:
         raise HTTPException(status_code=403, detail="El usuario no pertenece a una institución")
