@@ -1,0 +1,1 @@
+{"motor": "guiado", "modelo_literal": "jonatasgrosman/wav2vec2-large-xlsr-53-spanish", "umbral_ok": 1.5, "umbral_error": 3.0, "seg_por_frame": 0.02}

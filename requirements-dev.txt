@@ -1,0 +1,7 @@
+-r requirements-api.txt
+# Tests: everything except torch/transformers (core/guiado imports them lazily).
+faster-whisper>=1.1
+av>=12,<19
+praat-parselmouth>=0.4.3
+pytest>=8
+httpx>=0.27

@@ -1,0 +1,12 @@
+# Web service, database, storage and reports (no voice models).
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+pyjwt>=2.9
+boto3>=1.35
+anthropic>=0.50
+pandas>=2.0
+numpy>=1.26
+openpyxl>=3.1
+python-dotenv>=1.0

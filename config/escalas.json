@@ -1,0 +1,49 @@
+{
+  "marco_por_defecto": "astoreca",
+  "precision_minima_pct": 95,
+  "marcos": {
+    "mineduc": {
+      "nombre": "Mineduc / Fundar (1° a 8°)",
+      "fuente": "Tabla de desempeño de velocidad lectora (Mineduc / Fundar). 1° a 4° según la tabla publicada en Educando Juntos; es el único marco con 1° básico.",
+      "unidad": "palabras correctas por minuto (PCPM)",
+      "adecuado_desde": "Media baja",
+      "niveles": {
+        "1": [["Muy rápida",56],["Rápida",47],["Media alta",38],["Media baja",29],["Lenta",22],["Muy lenta",0]],
+        "2": [["Muy rápida",84],["Rápida",74],["Media alta",64],["Media baja",54],["Lenta",43],["Muy lenta",0]],
+        "3": [["Muy rápida",112],["Rápida",100],["Media alta",88],["Media baja",76],["Lenta",64],["Muy lenta",0]],
+        "4": [["Muy rápida",140],["Rápida",125],["Media alta",111],["Media baja",97],["Lenta",85],["Muy lenta",0]],
+        "5": [["Muy rápida",168],["Rápida",150],["Media alta",136],["Media baja",120],["Lenta",104],["Muy lenta",0]],
+        "6": [["Muy rápida",196],["Rápida",178],["Media alta",161],["Media baja",143],["Lenta",125],["Muy lenta",0]],
+        "7": [["Muy rápida",214],["Rápida",194],["Media alta",174],["Media baja",154],["Lenta",135],["Muy lenta",0]],
+        "8": [["Muy rápida",214],["Rápida",194],["Media alta",174],["Media baja",154],["Lenta",135],["Muy lenta",0]]
+      },
+      "fluidez_etiqueta": "Expresión",
+      "fluidez": [
+        "1 · Lee palabra a palabra, sin agrupar; entonación plana.",
+        "2 · Agrupa de a dos o tres palabras; pausas que cortan el sentido.",
+        "3 · Lee por frases con algunas pausas o entonaciones inadecuadas.",
+        "4 · Lee con fluidez, respeta la puntuación y da expresión al texto."
+      ],
+      "fluidez_minima": null
+    },
+    "astoreca": {
+      "nombre": "Astoreca · Calidad Lectora (2° a 8°)",
+      "fuente": "Ficha técnica Calidad Lectora 2° a 8°, Astoreca Evaluaciones.",
+      "unidad": "palabras correctamente leídas en 1 minuto (PPM)",
+      "adecuado_desde": "Media alta",
+      "niveles": {
+        "2": [["Muy rápida",84],["Rápida",74],["Media alta",64],["Media baja",54],["Lenta",43],["Muy lenta",6],["No lector",0]],
+        "3": [["Muy rápida",112],["Rápida",100],["Media alta",88],["Media baja",76],["Lenta",64],["Muy lenta",6],["No lector",0]],
+        "4": [["Muy rápida",140],["Rápida",125],["Media alta",111],["Media baja",97],["Lenta",85],["Muy lenta",6],["No lector",0]],
+        "5": [["Muy rápida",168],["Rápida",150],["Media alta",136],["Media baja",120],["Lenta",104],["Muy lenta",6],["No lector",0]],
+        "6": [["Muy rápida",196],["Rápida",178],["Media alta",161],["Media baja",143],["Lenta",125],["Muy lenta",6],["No lector",0]],
+        "7": [["Muy rápida",196],["Rápida",178],["Media alta",161],["Media baja",143],["Lenta",125],["Muy lenta",6],["No lector",0]],
+        "8": [["Muy rápida",196],["Rápida",178],["Media alta",161],["Media baja",143],["Lenta",125],["Muy lenta",6],["No lector",0]]
+      },
+      "fluidez_etiqueta": "Categoría de fluidez",
+      "fluidez": ["No lector", "Lectura silábica", "Lectura palabra a palabra", "Lectura unidades cortas", "Lectura fluida"],
+      "fluidez_descripcion": ["No decodifica o lo hace letra a letra.", "Lee sílaba a sílaba, sin unir palabras.", "Lee palabras sueltas, sin agruparlas.", "Agrupa 2 a 4 palabras; algunas pausas cortan el sentido.", "Lee por frases, respeta la puntuación y da expresión."],
+      "fluidez_minima": {"2": 3, "3": 4, "4": 4, "5": 4, "6": 5, "7": 5, "8": 5}
+    }
+  }
+}

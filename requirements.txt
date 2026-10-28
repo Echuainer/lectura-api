@@ -1,0 +1,8 @@
+-r requirements-api.txt
+# Voice engines (same pins as the original lectura_app). torch CPU wheel is installed in the Dockerfile.
+faster-whisper>=1.1
+torch>=2.2
+transformers>=4.40
+# av 19 quito metadata_errors, que faster-whisper 1.2 usa al leer audio
+av>=12,<19
+praat-parselmouth>=0.4.3
