@@ -41,7 +41,7 @@ Estos proveedores pueden procesar los datos fuera de Chile (transferencia intern
 
 ## Medidas de seguridad implementadas
 
-- **Sesión y roles:** sesión de Colegio Smart (JWT HS256 en cookie HttpOnly) y protección CSRF. Solo DOCENTE, DIRECTIVO y EQUIPO_PIE, y solo si el plan incluye el permiso `lectura`.
+- **Sesión y roles:** sesión de Colegio Smart (JWT firmado con HMAC-SHA en cookie HttpOnly) y protección CSRF. Solo DOCENTE, DIRECTIVO y EQUIPO_PIE, y solo si el plan incluye el permiso `lectura`.
 - **Aislamiento por institución:** toda consulta se filtra por la institución del token. Los tests verifican que un colegio no vea datos de otro.
 - **Edición restringida:** solo quien hizo la evaluación, o un directivo, puede modificarla.
 - **Tokens viejos rechazados:** no valen los tokens emitidos antes de un cambio de contraseña.

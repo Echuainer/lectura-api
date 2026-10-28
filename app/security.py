@@ -1,6 +1,6 @@
 """Authentication with the api-colegio-smart session (same JWT, same cookie) and role checks.
 
-Mirrors api-colegio-smart: JwtService (HS256, issuer and audience required), JwtAuthFilter (rejects tokens issued
+Mirrors api-colegio-smart: JwtService (HMAC-SHA, issuer and audience required), JwtAuthFilter (rejects tokens issued
 before the last password change) and RoleGuard (role per endpoint, data scoped to the token's institution).
 """
 import logging
@@ -72,7 +72,8 @@ def decode_token(token: str) -> dict:
     if len(settings.jwt_secret.encode()) < 32:
         raise RuntimeError("JWT_SECRET must be at least 32 characters (same value as api-colegio-smart)")
     try:
-        return jwt.decode(token, settings.jwt_secret.encode(), algorithms=["HS256"],
+        # jjwt's signWith(key) picks the algorithm from the key length: HS512 for a 64+ byte secret
+        return jwt.decode(token, settings.jwt_secret.encode(), algorithms=["HS256", "HS384", "HS512"],
                           issuer=settings.jwt_issuer, audience=settings.jwt_audience,
                           options={"require": ["exp", "iss", "aud"]})
     except jwt.PyJWTError as e:

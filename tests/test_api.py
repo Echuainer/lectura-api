@@ -2,6 +2,7 @@ import json
 import types
 from datetime import datetime
 
+import jwt
 import pytest
 
 from sqlalchemy import update
@@ -73,6 +74,17 @@ def test_requires_session(engine, fake_storage):
     {"aud": "otra-app"}, {"iss": "otro"}, {"mustChangePassword": True}, {"enabled": False}, {"exp": 1}])
 def test_rejects_invalid_tokens(engine, fake_storage, claims):
     assert make_client(token(**claims)).get("/api/lectura/courses").status_code == 401
+
+
+@pytest.mark.parametrize("algorithm", ["HS256", "HS384", "HS512"])
+def test_accepts_hmac_algorithms_of_jjwt(engine, fake_storage, algorithm):
+    # api-colegio-smart signs with HS512 when JWT_SECRET is 64+ bytes long
+    assert make_client(token(algorithm=algorithm)).get("/api/lectura/courses").status_code == 200
+
+
+def test_rejects_unsigned_token(engine, fake_storage):
+    unsigned = jwt.encode(jwt.decode(token(), options={"verify_signature": False}), None, algorithm="none")
+    assert make_client(unsigned).get("/api/lectura/courses").status_code == 401
 
 
 def test_rejects_token_from_before_password_change(engine, fake_storage):

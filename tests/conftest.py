@@ -21,12 +21,12 @@ SECRET = os.environ["JWT_SECRET"]
 CSRF = "csrf-test-token"
 
 
-def token(user_id=10, institution_id=1, role=security.DOCENTE, **extra):
+def token(user_id=10, institution_id=1, role=security.DOCENTE, algorithm="HS256", **extra):
     claims = {"iss": "colegio-smart-api", "aud": "colegio-smart-app", "sub": f"user{user_id}@colegio.cl",
               "userId": user_id, "institutionId": institution_id, "institutionRoleId": role, "enabled": True,
               "permissions": {"lectura": True}, "exp": int(time.time()) + 3600, "iat": int(time.time())}
     claims.update(extra)
-    return jwt.encode(claims, SECRET, algorithm="HS256")
+    return jwt.encode(claims, SECRET, algorithm=algorithm)
 
 
 class FakeStorage:
