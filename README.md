@@ -79,7 +79,7 @@ python scripts/migrate_lectura_app.py --sqlite lectura.db --institution-id 12 --
 
 ## Seguridad y privacidad
 
-- Todo endpoint exige sesión de Colegio Smart, el permiso `lectura` en el plan (salvo Admin) y rol de institución: DOCENTE, DIRECTIVO o EQUIPO_PIE. Coordinación y el estudio, solo DIRECTIVO. Los datos se filtran siempre por la `institutionId` del token.
+- Todo endpoint exige sesión de Colegio Smart, el permiso `lectura` en el plan (salvo Admin) y rol de institución: DOCENTE, DIRECTIVO o EQUIPO_PIE. Coordinación, solo DIRECTIVO; el estudio de validación de prosodia, solo Admin de plataforma (con institución en su cuenta). Los datos se filtran siempre por la `institutionId` del token.
 - Se rechazan los tokens emitidos antes del último cambio de contraseña, igual que `JwtAuthFilter`.
 - Protección CSRF con doble envío (`XSRF-TOKEN` / `X-XSRF-TOKEN`), igual que api-colegio-smart.
 - Solo quien hizo la evaluación, o un directivo, puede modificarla.

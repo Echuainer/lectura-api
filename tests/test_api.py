@@ -324,11 +324,15 @@ def test_reports(client, fake_storage, engine_ok):
     assert any(a["titulo"] == "Pendientes" for a in inst["alerts"])
     assert director.get("/api/lectura/reports/institution/export").status_code == 200
 
-    study = director.get("/api/lectura/reports/study").json()
+    # the validation study is internal: platform Admin only
+    assert director.get("/api/lectura/reports/study").status_code == 403
+    assert director.get("/api/lectura/reports/study/progress.md").status_code == 403
+    admin = make_client(token(user_id=12, role=security.DIRECTIVO, platformRole="Admin"))
+    study = admin.get("/api/lectura/reports/study").json()
     assert study["pairs"] == 3 and study["metrics"] is None
-    md = director.get("/api/lectura/reports/study/progress.md")
+    md = admin.get("/api/lectura/reports/study/progress.md")
     assert md.status_code == 200 and "Ana" not in md.text
-    assert director.get("/api/lectura/reports/study/final/30.md").status_code == 400
+    assert admin.get("/api/lectura/reports/study/final/30.md").status_code == 400
 
 
 def test_empty_reports(client):

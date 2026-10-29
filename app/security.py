@@ -135,6 +135,13 @@ staff = require_role(*STAFF)
 directors = require_role(DIRECTIVO)
 
 
+def admins(ctx: AuthContext = Depends(current_user)) -> AuthContext:
+    """Dependency: platform Admin only (internal tools such as the prosody validation study)."""
+    if ctx.platform_role != "Admin":
+        raise HTTPException(status_code=403, detail="No tiene permiso para esta acción")
+    return ctx
+
+
 class CsrfMiddleware(BaseHTTPMiddleware):
     """Double-submit cookie, like CookieCsrfTokenRepository in api-colegio-smart: every write must echo the
     XSRF-TOKEN cookie in the X-XSRF-TOKEN header. The cookie is written on safe responses when missing."""

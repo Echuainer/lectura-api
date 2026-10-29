@@ -4,7 +4,7 @@ from fastapi.responses import PlainTextResponse
 
 from app import reports, repository
 from app.deps import MARKDOWN, XLSX, bad_request, course_or_404, download, get_conn
-from app.security import AuthContext, directors, staff
+from app.security import AuthContext, admins, directors, staff
 
 router = APIRouter(prefix="/api/lectura/reports")
 
@@ -66,17 +66,17 @@ def institution_export(period: str | None = None, ctx: AuthContext = Depends(dir
 
 
 @router.get("/study")
-def study(ctx: AuthContext = Depends(directors), conn=Depends(get_conn)):
+def study(ctx: AuthContext = Depends(admins), conn=Depends(get_conn)):
     return reports.study_status(conn, ctx.institution_id)
 
 
 @router.get("/study/progress.md")
-def study_progress(ctx: AuthContext = Depends(directors), conn=Depends(get_conn)):
+def study_progress(ctx: AuthContext = Depends(admins), conn=Depends(get_conn)):
     return download(reports.study_progress_md(conn, ctx.institution_id).encode(), "estudio_avance.md", MARKDOWN)
 
 
 @router.get("/study/final/{milestone}.md")
-def study_final(milestone: int, ctx: AuthContext = Depends(directors), conn=Depends(get_conn)):
+def study_final(milestone: int, ctx: AuthContext = Depends(admins), conn=Depends(get_conn)):
     try:
         text = reports.study_final_md(conn, ctx.institution_id, milestone)
     except ValueError as e:
@@ -85,7 +85,7 @@ def study_final(milestone: int, ctx: AuthContext = Depends(directors), conn=Depe
 
 
 @router.get("/study/data/{milestone}.xlsx")
-def study_data(milestone: int, ctx: AuthContext = Depends(directors), conn=Depends(get_conn)):
+def study_data(milestone: int, ctx: AuthContext = Depends(admins), conn=Depends(get_conn)):
     try:
         content = reports.study_data_xlsx(conn, ctx.institution_id, milestone)
     except ValueError as e:

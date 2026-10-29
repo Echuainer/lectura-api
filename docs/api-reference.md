@@ -99,10 +99,10 @@ Todos los campos son opcionales: `framework`, `expression` (1..N según el marco
 | GET | `/reports/students/{id}` | staff | Por estudiante: `history` (con `htPercentile`, `rasinski`, `report`), `radar {axes, max, series}`, `words`, `errors` |
 | GET | `/reports/institution?period=` | directivo | Coordinación: `kpis`, `courses` (por curso: `courseName`, `level`, `framework`, `distribution`, promedios y evaluados), `evolution {periods, rows:[{level, values}]}`, `alerts`, `plan`, `students` |
 | GET | `/reports/institution/export?period=` | directivo | Excel de coordinación |
-| GET | `/reports/study` | directivo | Estudio de prosodia: `pairs`, `milestones`, `byCourse`, `withRasinski`, `metrics` (desde 30 lecturas) |
-| GET | `/reports/study/progress.md` | directivo | Informe de avance, sin puntajes del modelo |
-| GET | `/reports/study/final/{30\|100}.md` | directivo | Informe final; `400` si no se llegó al hito |
-| GET | `/reports/study/data/{30\|100}.xlsx` | directivo | Datos anónimos del estudio |
+| GET | `/reports/study` | admin | Estudio de prosodia: `pairs`, `milestones`, `byCourse`, `withRasinski`, `metrics` (desde 30 lecturas) |
+| GET | `/reports/study/progress.md` | admin | Informe de avance, sin puntajes del modelo |
+| GET | `/reports/study/final/{30\|100}.md` | admin | Informe final; `400` si no se llegó al hito |
+| GET | `/reports/study/data/{30\|100}.xlsx` | admin | Datos anónimos del estudio |
 
 Cada fila de `students` trae: `{assessmentId, studentId, name, courseName, wcpm, category, speedRange, fluency, fluencyRange, accuracyPct, delta, toReview, group, groupLabel, date, period, textTitle, errors}`.
 
