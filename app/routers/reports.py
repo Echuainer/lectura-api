@@ -1,6 +1,5 @@
 """Results (per course, per text, per student), Coordination and the prosody validation study."""
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import PlainTextResponse
 
 from app import reports, repository
 from app.deps import MARKDOWN, XLSX, bad_request, course_or_404, download, get_conn
@@ -24,12 +23,20 @@ def course_export(course_id: int, period: str | None = None, ctx: AuthContext = 
     return download(reports.to_excel(data["students"], reports.STUDENT_COLUMNS), name, XLSX)
 
 
-@router.post("/courses/{course_id}/synthesis", response_class=PlainTextResponse)
+@router.get("/courses/{course_id}/synthesis")
+def saved_synthesis(course_id: int, period: str, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
+    """The saved synthesis of that measurement, or null if it was never generated."""
+    course_or_404(conn, ctx.institution_id, course_id)
+    return repository.get_synthesis(conn, ctx.institution_id, course_id, period)
+
+
+@router.post("/courses/{course_id}/synthesis")
 def course_synthesis(course_id: int, period: str, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
-    """AI synthesis of the course. Only aggregated figures are sent, never names."""
+    """Generates (or regenerates) the AI synthesis of the course and saves it. Only aggregated figures and words
+    of the text are sent, never names."""
     course_ = course_or_404(conn, ctx.institution_id, course_id)
     try:
-        return reports.course_synthesis(conn, ctx.institution_id, course_, period)
+        return reports.course_synthesis(conn, ctx.institution_id, course_, period, ctx.user_id, ctx.email)
     except ValueError as e:
         raise bad_request(e)
     except Exception as e:

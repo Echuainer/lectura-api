@@ -1,11 +1,11 @@
 import json
 import types
-from datetime import datetime
+from datetime import datetime, timezone
 
 import jwt
 import pytest
 
-from sqlalchemy import update
+from sqlalchemy import func, select, update
 
 from app import db, repository, security, worker
 from conftest import make_client, token
@@ -35,7 +35,11 @@ def engine_ok(monkeypatch):
         "version": "v-test", "puntajes": [3, 3, 2, 4], "medidas": {}, "calidad": {"snr_db": 20.0}})
     monkeypatch.setattr(worker, "_prosodia", lambda: fake)
     monkeypatch.setattr("core.informes.informe_alumno", lambda datos: f"Informe nivel {datos['nivel']}")
-    monkeypatch.setattr("core.informes.informe_curso", lambda curso, resumen: f"Síntesis {curso}: {resumen['n_evaluados']}")
+    fake.summaries = []
+    def course_report(curso, resumen):
+        fake.summaries.append(resumen)
+        return f"Síntesis {curso}: {resumen['n_evaluados']}"
+    monkeypatch.setattr("core.informes.informe_curso", course_report)
     return fake
 
 
@@ -304,8 +308,21 @@ def test_reports(client, fake_storage, engine_ok):
     x = client.get("/api/lectura/reports/courses/100/export")
     assert x.status_code == 200 and x.headers["content-type"].startswith("application/vnd.openxmlformats")
 
-    s = client.post("/api/lectura/reports/courses/100/synthesis?period=2026-10")
-    assert s.status_code == 200 and s.text == "Síntesis 5° Básico A: 2"
+    url = "/api/lectura/reports/courses/100/synthesis?period=2026-10"
+    assert client.get(url).json() is None  # never generated
+    s = client.post(url).json()
+    assert s["content"] == "Síntesis 5° Básico A: 2" and s["outdated"] is False and s["createdBy"] == "user10@colegio.cl"
+    summary = engine_ok.summaries[-1]  # words of the text and prosody go to Claude, never names
+    assert any(w["palabra"] == "grande" and w["leido"] == ["grane"] for w in summary["palabras_a_reforzar"])
+    assert set(summary["prosodia_cada_100_palabras"]) == {"pausas inesperadas", "repeticiones", "autocorrecciones"}
+    assert "Ana" not in str(summary) and "Beto" not in str(summary)
+    assert client.get(url).json()["content"] == s["content"]  # saved
+    with worker.db.engine.begin() as conn:  # assessments saved after it make it outdated
+        conn.execute(update(db.reading_course_syntheses).values(created_at=datetime(2026, 1, 1, tzinfo=timezone.utc)))
+    assert client.get(url).json()["outdated"] is True
+    assert client.post(url).json()["outdated"] is False  # regenerated: replaces the saved one
+    with worker.db.engine.connect() as conn:
+        assert conn.execute(select(func.count()).select_from(db.reading_course_syntheses)).scalar() == 1
 
     t = client.get("/api/lectura/reports/courses/100/texts").json()
     assert len(t["texts"]) == 3 and t["detail"]["kpis"]["readers"] >= 1

@@ -50,7 +50,7 @@ Servidor local: `cp .env.example .env`, completar los valores y ejecutar `.venv/
 
 ## Despliegue (Coolify)
 
-1. **Base de datos:** ejecutar en orden `migrations/001_reading_tables.sql` y `002_reading_legacy_source.sql` en Supabase. Van en la misma base y el mismo esquema que api-colegio-smart.
+1. **Base de datos:** ejecutar en orden `migrations/001_reading_tables.sql`, `002_reading_legacy_source.sql` y `003_reading_course_syntheses.sql` en Supabase. Van en la misma base y el mismo esquema que api-colegio-smart.
 2. **Bucket R2 privado** para los audios, sin dominio público. CORS del bucket: permitir `PUT` y `GET` desde `https://lectura.colegiosmart.cl`, con el header `Content-Type`.
 3. **Imagen:** `docker build -t lectura-api .`, que ya trae el modelo wav2vec2. Para incluir también Whisper: `--build-arg WITH_WHISPER=1`.
 4. **Recursos:** límite de **3 GB de RAM** (el motor guiado usa ~2–2,5 GB) y 2 a 4 vCPU. Un minuto de audio tarda unos 10 a 30 s en CPU. Correr **un solo proceso**: el worker y los modelos viven en él.

@@ -272,3 +272,33 @@ def latest_job(conn: Connection, assessment_id: int, kind: str) -> dict | None:
     row = conn.execute(select(j).where(and_(j.c.assessment_id == assessment_id, j.c.kind == kind))
                        .order_by(j.c.id.desc())).first()
     return dict(row._mapping) if row else None
+
+
+# --- Course synthesis ----------------------------------------------------------------------------
+
+def get_synthesis(conn: Connection, institution_id: int, course_id: int, period: str) -> dict | None:
+    s, a = db.reading_course_syntheses, db.reading_assessments
+    row = conn.execute(select(s).where(and_(s.c.institution_id == institution_id, s.c.course_id == course_id,
+                                            s.c.period == period))).first()
+    if not row:
+        return None
+    # assessments saved after the synthesis make it outdated
+    last = conn.execute(select(func.max(a.c.updated_at)).where(and_(
+        a.c.institution_id == institution_id, a.c.course_id == course_id, a.c.period == period,
+        a.c.status == "complete"))).scalar()
+    created = _aware(row.created_at)
+    return {"content": row.content, "period": row.period, "createdAt": created.isoformat(),
+            "createdBy": row.created_by_email, "outdated": bool(last and _aware(last) > created)}
+
+
+def save_synthesis(conn: Connection, institution_id: int, course_id: int, period: str, content: str,
+                   user_id: int, email: str) -> None:
+    s = db.reading_course_syntheses
+    where = and_(s.c.institution_id == institution_id, s.c.course_id == course_id, s.c.period == period)
+    values = {"content": content, "created_by": user_id, "created_by_email": email, "created_at": now()}
+    if conn.execute(update(s).where(where).values(**values)).rowcount == 0:
+        conn.execute(insert(s).values(institution_id=institution_id, course_id=course_id, period=period, **values))
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)  # SQLite returns naive datetimes

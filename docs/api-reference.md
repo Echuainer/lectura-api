@@ -94,7 +94,8 @@ Todos los campos son opcionales: `framework`, `expression` (1..N según el marco
 |---|---|---|---|
 | GET | `/reports/courses/{id}?period=` | staff | Curso · medición: `periods`, `period`, `previousPeriod`, `kpis {evaluated, enrolled, averageWcpm, averageDelta, pctSpeedAdequate, pctFluencyAdequate, belowInBoth}`, `distributions [{period, rows}]`, `groups [{key, label, action, frequency, n, pct}]`, `incomplete`, `rasinski`, `students` (ordenados por prioridad de apoyo) y `errors`. Sin datos: `{empty: true}` |
 | GET | `/reports/courses/{id}/export?period=` | staff | Excel de la tabla de estudiantes |
-| POST | `/reports/courses/{id}/synthesis?period=` | staff | Síntesis del curso con IA (texto Markdown); `502` si falla Claude |
+| GET | `/reports/courses/{id}/synthesis?period=` | staff | Síntesis guardada: `{content, period, createdAt, createdBy, outdated}` o `null`. `outdated`: hay evaluaciones guardadas después |
+| POST | `/reports/courses/{id}/synthesis?period=` | staff | Genera la síntesis con IA (Markdown), la guarda reemplazando la anterior y la devuelve como el GET; `502` si falla Claude |
 | GET | `/reports/courses/{id}/texts?textId=` | staff | Curso · por texto: `texts [{textId, title, students, averageWcpm, averageAccuracyPct}]` y `detail {kpis, words, errors, distribution, students}` |
 | GET | `/reports/students/{id}` | staff | Por estudiante: `history` (con `htPercentile`, `rasinski`, `report`), `radar {axes, max, series}`, `words`, `errors` |
 | GET | `/reports/institution?period=` | directivo | Coordinación: `kpis`, `courses` (por curso: `courseName`, `level`, `framework`, `distribution`, promedios y evaluados), `evolution {periods, rows:[{level, values}]}`, `alerts`, `plan`, `students` |

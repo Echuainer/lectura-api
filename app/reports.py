@@ -130,18 +130,41 @@ def synthesis_summary(report_df: pd.DataFrame, previous_df: pd.DataFrame | None)
         "grupos_de_apoyo": {reportes.GRUPOS[g][0]: n for g, n in grupos.items()},
         "errores_frecuentes_pct_del_total": {x["tipo"]: x["pct"] for x in reportes.errores_frecuentes(actual)},
         "rasinski": reportes.resumen_rasinski(actual),
+        "prosodia_cada_100_palabras": _prosody_rates(actual),
+        "palabras_a_reforzar": [{"palabra": w["palabra"], "estudiantes": w["estudiantes"], "leido": w["leido"][:3]}
+                                for w in reportes.palabras_con_error(actual, limite=10)],
         "avance_promedio_ppm": None if previous_df is None else prom - round(float(previous_df["pcpm_efectivo"].mean())),
     })
 
 
-def course_synthesis(conn, institution_id: int, course: dict, period: str) -> str:
+PROSODY_KEYS = {"pausas_inesperadas": "pausas inesperadas", "repeticiones": "repeticiones",
+                "autocorrecciones": "autocorrecciones"}
+
+
+def _prosody_rates(df: pd.DataFrame) -> dict | None:
+    """Average per 100 words read of the events that break the reading flow (the synthesis' prosody section)."""
+    rates = {k: [] for k in PROSODY_KEYS}
+    for r in df["resultado_json"]:
+        r = json.loads(r) if isinstance(r, str) else {}
+        if r.get("palabras_leidas"):
+            for k in rates:
+                rates[k].append(100 * (r.get(k) or 0) / r["palabras_leidas"])
+    if not any(rates.values()):
+        return None
+    return {label: round(sum(rates[k]) / len(rates[k]), 1) for k, label in PROSODY_KEYS.items() if rates[k]}
+
+
+def course_synthesis(conn, institution_id: int, course: dict, period: str, user_id: int, email: str) -> dict:
+    """Generates the synthesis with Claude and saves it, replacing the previous one of that measurement."""
     del_curso = prepared(conn, institution_id, course_id=course["id"])
     if del_curso.empty or period not in set(del_curso["periodo"].dropna()):
         raise ValueError("No hay evaluaciones en esa medición")
     actual = reportes.ultima_por_estudiante(del_curso[del_curso["periodo"] == period])
     previous = [p for p in course_periods(del_curso) if p < period]
     anterior = reportes.ultima_por_estudiante(del_curso[del_curso["periodo"] == previous[0]]) if previous else None
-    return informes.informe_curso(course["name"], synthesis_summary(actual, anterior))
+    content = informes.informe_curso(course["name"], synthesis_summary(actual, anterior))
+    repository.save_synthesis(conn, institution_id, course["id"], period, content, user_id, email)
+    return repository.get_synthesis(conn, institution_id, course["id"], period)
 
 
 def _words(df) -> list[dict]:

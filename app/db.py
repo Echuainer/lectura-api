@@ -6,7 +6,7 @@ Two metadata objects:
   declared only with the columns we use. Tests create both on SQLite.
 """
 from sqlalchemy import (JSON, BigInteger, Column, DateTime, Float, ForeignKey, Integer, MetaData, SmallInteger,
-                        String, Table, Text, create_engine, func)
+                        String, Table, Text, UniqueConstraint, create_engine, func)
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.settings import settings
@@ -103,6 +103,19 @@ reading_assessments = Table(
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("source", Text),
     Column("source_id", BigInteger),
+)
+
+reading_course_syntheses = Table(
+    "reading_course_syntheses", metadata,
+    Column("id", Id, primary_key=True),
+    Column("institution_id", BigInteger, nullable=False),
+    Column("course_id", BigInteger, nullable=False),
+    Column("period", Text, nullable=False),
+    Column("content", Text, nullable=False),
+    Column("created_by", BigInteger),
+    Column("created_by_email", Text),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    UniqueConstraint("institution_id", "course_id", "period"),
 )
 
 reading_jobs = Table(
