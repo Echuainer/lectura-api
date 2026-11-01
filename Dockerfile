@@ -21,6 +21,7 @@ COPY app ./app
 COPY migrations ./migrations
 
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD python -c "import urllib.request,os; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\",\"8000\")}/actuator/health')"
+# bash /dev/tcp instead of python -c: avoids starting an interpreter every 30 s
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/${PORT:-8000} && printf "GET /actuator/health HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3 && head -1 <&3 | grep -q " 200"'
 # A single process: the worker thread and the models (~2 GB) live in it. Do not add --workers.
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
