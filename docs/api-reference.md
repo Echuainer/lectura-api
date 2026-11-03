@@ -22,10 +22,10 @@ curl -b "$C" -H 'X-XSRF-TOKEN: abc' -H 'Content-Type: application/json' \
 | GET | `/config` | staff | Marcos (`frameworks`, igual a `config/escalas.json`), `defaultFramework`, `minimumAccuracyPct`, `levels`, `rasinski` `[{dimension, levels:[{label, description}]}]`, `engine`, `htSource` |
 | GET | `/courses` | staff | `[{id, name: "5° Básico A", level: 5 \| null, studentCount}]`. `level` es null fuera de 1° a 8° básico |
 | GET | `/courses/{id}/students?period=2026-10` | staff | `[{id, name, lastName, lastAssessment: {id, assessedAt, textTitle, wcpm} \| null, assessedInPeriod}]` |
-| GET | `/texts?level=5` | staff | `[{id, title, level, content, wordCount, global, createdAt}]`. Incluye los textos de la institución y el catálogo compartido (`global: true`) |
+| GET | `/texts?level=5` | staff | `[{id, title, level, content, wordCount, global, editable, createdAt}]`. Incluye los textos de la institución y el catálogo compartido (`global: true`) |
 | GET | `/texts/{id}` | staff | Texto + `assessmentCount` (solo evaluaciones de la institución) |
 | POST | `/texts` | staff | Body `{title, level (1-8), content}` → `201` texto |
-| PUT | `/texts/{id}` | staff | Mismo body. Las evaluaciones guardadas conservan su resultado. `403` si el texto es del catálogo (`global: true`) |
+| PUT | `/texts/{id}` | staff | Mismo body. Las evaluaciones guardadas conservan su resultado. Los textos del catálogo (`global: true`) solo los edita un correo de `CATALOG_EDITORS` (por defecto `admin@colegiosmart.cl`) y el cambio se ve en todos los colegios; para el resto, `403` |
 
 ## Evaluaciones
 

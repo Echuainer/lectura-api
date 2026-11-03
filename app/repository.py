@@ -151,6 +151,15 @@ def update_text(conn: Connection, institution_id: int, text_id: int, title: str,
     return res.rowcount > 0
 
 
+def update_catalog_text(conn: Connection, text_id: int, title: str, level: int, content: str) -> bool:
+    """Edits a shared catalog text (institution_id IS NULL): the change shows in every institution."""
+    title, level, content, words = _validate_text(title, level, content)
+    t = db.reading_texts
+    res = conn.execute(update(t).where(and_(t.c.id == text_id, t.c.institution_id.is_(None))).values(
+        title=title, level=level, content=content, word_count=words, updated_at=now()))
+    return res.rowcount > 0
+
+
 def count_text_assessments(conn: Connection, institution_id: int, text_id: int) -> int:
     a = db.reading_assessments
     return conn.execute(select(func.count()).where(

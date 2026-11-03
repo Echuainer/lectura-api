@@ -181,6 +181,23 @@ def test_catalog_texts_shared_and_readonly(client, engine):
     assert client.get(f"/api/lectura/texts/{own['id']}").json()["global"] is False
 
 
+def test_catalog_texts_editable_only_by_catalog_editors(client, engine):
+    with engine.begin() as conn:
+        cid = conn.execute(insert(db.reading_texts).values(
+            institution_id=None, title="Catálogo", level=1, content="Lola tiene una caja.", word_count=4,
+            source="catalogo", source_id=2).returning(db.reading_texts.c.id)).scalar_one()
+    assert [t["editable"] for t in client.get("/api/lectura/texts").json()] == [False]
+
+    editor = make_client(token(user_id=20, institution_id=2, sub="Admin@ColegioSmart.cl", passwordChangedAt=1_800_000_000))
+    assert [t["editable"] for t in editor.get("/api/lectura/texts").json()] == [True]
+    body = {"title": "Catálogo corregido", "level": 1, "content": "Lola tiene una caja roja\nLa caja está bajo su cama"}
+    r = editor.put(f"/api/lectura/texts/{cid}", json=body)
+    assert r.status_code == 200 and r.json()["wordCount"] == 11 and r.json()["global"] is True
+    # el cambio lo ve cualquier institución; quien no es editor sigue sin poder editar
+    assert client.get(f"/api/lectura/texts/{cid}").json()["title"] == "Catálogo corregido"
+    assert client.put(f"/api/lectura/texts/{cid}", json=body).status_code == 403
+
+
 def test_config(client):
     c = client.get("/api/lectura/config").json()
     assert c["defaultFramework"] == "astoreca" and "mineduc" in c["frameworks"]
