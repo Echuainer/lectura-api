@@ -1,5 +1,5 @@
 -- Seed: shared catalog of 40 reading texts (levels 1-8, five each). institution_id NULL = every institution sees them.
--- Requires 004. Re-runnable: same (source, source_id) is skipped; to correct a text, edit it here and use DO UPDATE.
+-- Datos, no esquema: va en seeds/ y no en migrations/ para que los tests no lo carguen. Requires migrations/004. Re-runnable: same (source, source_id) is skipped; to correct a text, edit it here and use DO UPDATE.
 INSERT INTO reading_texts (institution_id, source, source_id, title, level, content, word_count)
 SELECT NULL, 'catalogo', v.source_id, v.title, v.level, v.content, v.word_count
 FROM (VALUES
