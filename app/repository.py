@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timezone
 
 import pandas as pd
-from sqlalchemy import and_, delete, func, insert, select, update
+from sqlalchemy import and_, delete, func, insert, or_, select, update
 from sqlalchemy.engine import Connection
 
 from app import db
@@ -101,12 +101,17 @@ def enrolled_by_course(conn: Connection, institution_id: int) -> dict[str, int]:
 
 def _text_dict(row) -> dict:
     return {"id": row.id, "title": row.title, "level": row.level, "content": row.content,
-            "wordCount": row.word_count, "createdAt": row.created_at.isoformat() if row.created_at else None}
+            "wordCount": row.word_count, "global": row.institution_id is None, "createdAt": row.created_at.isoformat() if row.created_at else None}
+
+
+def _visible(t, institution_id: int):
+    """Own texts plus the shared catalog (institution_id NULL)."""
+    return or_(t.c.institution_id == institution_id, t.c.institution_id.is_(None))
 
 
 def list_texts(conn: Connection, institution_id: int, level: int | None = None) -> list[dict]:
     t = db.reading_texts
-    q = select(t).where(t.c.institution_id == institution_id)
+    q = select(t).where(_visible(t, institution_id))
     if level is not None:
         q = q.where(t.c.level == level)
     return [_text_dict(r) for r in conn.execute(q.order_by(t.c.level, t.c.title))]
@@ -114,7 +119,7 @@ def list_texts(conn: Connection, institution_id: int, level: int | None = None) 
 
 def get_text(conn: Connection, institution_id: int, text_id: int) -> dict | None:
     t = db.reading_texts
-    row = conn.execute(select(t).where(and_(t.c.id == text_id, t.c.institution_id == institution_id))).first()
+    row = conn.execute(select(t).where(and_(t.c.id == text_id, _visible(t, institution_id)))).first()
     return _text_dict(row) if row else None
 
 
@@ -138,7 +143,7 @@ def create_text(conn: Connection, institution_id: int, user_id: int, title: str,
 
 
 def update_text(conn: Connection, institution_id: int, text_id: int, title: str, level: int, content: str) -> bool:
-    """Saved assessments keep their result; new ones use the corrected text."""
+    """Saved assessments keep their result; new ones use the corrected text. Catalog texts are never matched."""
     title, level, content, words = _validate_text(title, level, content)
     t = db.reading_texts
     res = conn.execute(update(t).where(and_(t.c.id == text_id, t.c.institution_id == institution_id)).values(
@@ -146,9 +151,10 @@ def update_text(conn: Connection, institution_id: int, text_id: int, title: str,
     return res.rowcount > 0
 
 
-def count_text_assessments(conn: Connection, text_id: int) -> int:
+def count_text_assessments(conn: Connection, institution_id: int, text_id: int) -> int:
     a = db.reading_assessments
-    return conn.execute(select(func.count()).where(a.c.text_id == text_id)).scalar_one()
+    return conn.execute(select(func.count()).where(
+        and_(a.c.text_id == text_id, a.c.institution_id == institution_id))).scalar_one()
 
 
 # --- Assessments -------------------------------------------------------------------------------

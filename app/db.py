@@ -53,7 +53,7 @@ cs_students = Table(
 reading_texts = Table(
     "reading_texts", metadata,
     Column("id", Id, primary_key=True),
-    Column("institution_id", BigInteger, nullable=False),
+    Column("institution_id", BigInteger),  # NULL = shared catalog text (migrations/004)
     Column("title", Text, nullable=False),
     Column("level", SmallInteger, nullable=False),
     Column("content", Text, nullable=False),

@@ -67,7 +67,7 @@ def text(text_id: int, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)
     t = repository.get_text(conn, ctx.institution_id, text_id)
     if t is None:
         raise HTTPException(404, "Texto no encontrado")
-    return t | {"assessmentCount": repository.count_text_assessments(conn, text_id)}
+    return t | {"assessmentCount": repository.count_text_assessments(conn, ctx.institution_id, text_id)}
 
 
 @router.post("/texts", status_code=201)
@@ -86,5 +86,8 @@ def update_text(text_id: int, body: TextIn, ctx: AuthContext = Depends(staff), c
     except ValueError as e:
         raise bad_request(e)
     if not found:
+        existing = repository.get_text(conn, ctx.institution_id, text_id)
+        if existing and existing["global"]:
+            raise HTTPException(403, "Los textos del catálogo no se pueden editar. Cree un texto propio.")
         raise HTTPException(404, "Texto no encontrado")
     return repository.get_text(conn, ctx.institution_id, text_id)

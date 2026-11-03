@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import jwt
 import pytest
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, insert, select, update
 
 from app import db, repository, security, worker
 from conftest import make_client, token
@@ -163,6 +163,22 @@ def test_texts_crud_and_isolation(client, engine):
     other = make_client(token(user_id=20, institution_id=2, passwordChangedAt=1_800_000_000))
     assert other.get(f"/api/lectura/texts/{t['id']}").status_code == 404
     assert other.get("/api/lectura/texts").json() == []
+
+
+def test_catalog_texts_shared_and_readonly(client, engine):
+    with engine.begin() as conn:
+        cid = conn.execute(insert(db.reading_texts).values(
+            institution_id=None, title="Catálogo", level=5, content="Uno dos tres.", word_count=3,
+            source="catalogo", source_id=1).returning(db.reading_texts.c.id)).scalar_one()
+    own = _text(client, title="Propio")
+    other = make_client(token(user_id=20, institution_id=2, passwordChangedAt=1_800_000_000))
+    for c in (client, other):
+        assert [t["id"] for t in c.get("/api/lectura/texts").json() if t["global"]] == [cid]
+        assert c.get(f"/api/lectura/texts/{cid}").json()["assessmentCount"] == 0
+        r = c.put(f"/api/lectura/texts/{cid}", json={"title": "x", "level": 5, "content": "hola"})
+        assert r.status_code == 403
+    assert [t["id"] for t in other.get("/api/lectura/texts").json()] == [cid]  # does not see institution 1's own
+    assert client.get(f"/api/lectura/texts/{own['id']}").json()["global"] is False
 
 
 def test_config(client):
