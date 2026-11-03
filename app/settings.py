@@ -23,6 +23,10 @@ class Settings:
     auth_cookie_name: str = field(default_factory=lambda: os.environ.get("AUTH_COOKIE_NAME", "cs_session"))
     csrf_cookie_secure: bool = field(default_factory=lambda: _bool("CSRF_COOKIE_SECURE", True))
 
+    # Emails (comma separated) allowed to edit the shared catalog texts; any other user gets a 403.
+    catalog_editors: list[str] = field(
+        default_factory=lambda: [e.lower() for e in _list("CATALOG_EDITORS", "admin@colegiosmart.cl")])
+
     cors_allowed_origins: list[str] = field(
         default_factory=lambda: _list("CORS_ALLOWED_ORIGINS", "https://lectura.colegiosmart.cl"))
 
