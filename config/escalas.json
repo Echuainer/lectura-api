@@ -27,11 +27,13 @@
       "fluidez_minima": null
     },
     "astoreca": {
-      "nombre": "Astoreca · Calidad Lectora (2° a 8°)",
-      "fuente": "Ficha técnica Calidad Lectora 2° a 8°, Astoreca Evaluaciones.",
+      "nombre": "Astoreca · Calidad Lectora (1° a 8°)",
+      "fuente": "Ficha técnica Calidad Lectora 2° a 8°, Astoreca Evaluaciones. 1°: cortes de velocidad de Mineduc / Fundar (la ficha no incluye 1°).",
       "unidad": "palabras correctamente leídas en 1 minuto (PPM)",
       "adecuado_desde": "Media alta",
+      "adecuado_desde_por_nivel": {"1": "Media baja"},
       "niveles": {
+        "1": [["Muy rápida",56],["Rápida",47],["Media alta",38],["Media baja",29],["Lenta",22],["Muy lenta",0]],
         "2": [["Muy rápida",84],["Rápida",74],["Media alta",64],["Media baja",54],["Lenta",43],["Muy lenta",6],["No lector",0]],
         "3": [["Muy rápida",112],["Rápida",100],["Media alta",88],["Media baja",76],["Lenta",64],["Muy lenta",6],["No lector",0]],
         "4": [["Muy rápida",140],["Rápida",125],["Media alta",111],["Media baja",97],["Lenta",85],["Muy lenta",6],["No lector",0]],
@@ -43,7 +45,7 @@
       "fluidez_etiqueta": "Categoría de fluidez",
       "fluidez": ["No lector", "Lectura silábica", "Lectura palabra a palabra", "Lectura unidades cortas", "Lectura fluida"],
       "fluidez_descripcion": ["No decodifica o lo hace letra a letra.", "Lee sílaba a sílaba, sin unir palabras.", "Lee palabras sueltas, sin agruparlas.", "Agrupa 2 a 4 palabras; algunas pausas cortan el sentido.", "Lee por frases, respeta la puntuación y da expresión."],
-      "fluidez_minima": {"2": 3, "3": 4, "4": 4, "5": 4, "6": 5, "7": 5, "8": 5}
+      "fluidez_minima": {"1": 3, "2": 3, "3": 4, "4": 4, "5": 4, "6": 5, "7": 5, "8": 5}
     }
   }
 }

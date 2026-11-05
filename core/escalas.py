@@ -10,6 +10,11 @@ def cargar_escalas(ruta: str | None = None) -> dict:
         return json.load(f)
 
 
+def adecuado_desde(marco: dict, nivel) -> str:
+    """Categoría desde la que la velocidad es adecuada; un marco puede fijarla distinta en un nivel."""
+    return (marco.get("adecuado_desde_por_nivel") or {}).get(str(nivel), marco["adecuado_desde"])
+
+
 def clasificar(pcpm: float, nivel: int, marco: dict) -> str | None:
     # Las escalas van de mayor a menor mínimo: gana el primer tramo que se cumple.
     for nombre, minimo in marco["niveles"].get(str(nivel), []):
@@ -20,10 +25,11 @@ def clasificar(pcpm: float, nivel: int, marco: dict) -> str | None:
 
 def rango_velocidad(categoria: str | None, nivel: int, marco: dict) -> str | None:
     orden = [nombre for nombre, _ in marco["niveles"].get(str(nivel), [])]
-    if categoria not in orden or marco["adecuado_desde"] not in orden:
+    desde = adecuado_desde(marco, nivel)
+    if categoria not in orden or desde not in orden:
         return None
     # La lista va de mayor a menor: lo adecuado está en la misma posición o antes.
-    adecuado = orden.index(categoria) <= orden.index(marco["adecuado_desde"])
+    adecuado = orden.index(categoria) <= orden.index(desde)
     return "Adecuado" if adecuado else "Bajo lo esperado"
 
 

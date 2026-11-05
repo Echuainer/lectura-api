@@ -14,7 +14,7 @@ import pandas as pd
 from app import repository
 from app.assessments import MARCOS
 from app.worker import ESCALAS
-from core import estudio, informes, referencias, reportes
+from core import escalas, estudio, informes, referencias, reportes
 
 PRECISION_MIN = ESCALAS["precision_minima_pct"]
 PRIORITY = {"ninguno": 0, "velocidad": 1, "fluidez": 2, "incompleto": 3, "ambos": 4}
@@ -95,7 +95,7 @@ def course_report(conn, institution_id: int, course: dict, period: str | None) -
     return clean(base | {
         "empty": False, "period": period, "previousPeriod": previous[0] if previous else None,
         "level": nivel, "framework": marco_key, "frameworkName": marco["nombre"],
-        "expectedFrom": marco["adecuado_desde"],
+        "expectedFrom": escalas.adecuado_desde(marco, nivel),
         "kpis": {"evaluated": len(actual), "enrolled": enrolled, "averageWcpm": avg,
                  "averageDelta": None if prev_avg is None else avg - prev_avg,
                  "pctSpeedAdequate": reportes.pct_adecuado(actual["rango_velocidad"]),
@@ -126,7 +126,7 @@ def synthesis_summary(report_df: pd.DataFrame, previous_df: pd.DataFrame | None)
         "n_en_riesgo": int(actual["riesgo"].sum()),
         "por_categoria": {x["categoria"]: x["n"] for x in reportes.distribucion(actual, marco, nivel)},
         "pcpm_minimo_por_categoria": dict(marco["niveles"].get(str(nivel), [])),
-        "categoria_esperada_desde": marco["adecuado_desde"],
+        "categoria_esperada_desde": escalas.adecuado_desde(marco, nivel),
         "grupos_de_apoyo": {reportes.GRUPOS[g][0]: n for g, n in grupos.items()},
         "errores_frecuentes_pct_del_total": {x["tipo"]: x["pct"] for x in reportes.errores_frecuentes(actual)},
         "rasinski": reportes.resumen_rasinski(actual),
@@ -187,7 +187,7 @@ def course_texts_report(conn, institution_id: int, course: dict, text_id: int | 
         nivel, marco_key = int(_mode(ev["nivel"])), _mode(ev["marco"])
         marco = MARCOS[marco_key]
         detail = {
-            "textId": text_id, "level": nivel, "framework": marco_key, "expectedFrom": marco["adecuado_desde"],
+            "textId": text_id, "level": nivel, "framework": marco_key, "expectedFrom": escalas.adecuado_desde(marco, nivel),
             "kpis": {"readers": len(ev), "averageWcpm": round(float(ev["pcpm_efectivo"].mean())),
                      "minWcpm": _round(ev["pcpm_efectivo"].min()), "maxWcpm": _round(ev["pcpm_efectivo"].max()),
                      "averageAccuracyPct": None if ev["precision_pct"].isna().all() else round(float(ev["precision_pct"].mean()), 1),
@@ -208,7 +208,7 @@ def student_report(conn, institution_id: int, student: dict) -> dict:
     h = h.sort_values("fecha")
     nivel, marco_key = int(h["nivel"].iloc[-1]), h["marco"].iloc[-1]
     marco = MARCOS[marco_key]
-    minimum = dict(marco["niveles"].get(str(nivel), [])).get(marco["adecuado_desde"])
+    minimum = dict(marco["niveles"].get(str(nivel), [])).get(escalas.adecuado_desde(marco, nivel))
     history = []
     for _, f in h.iterrows():
         ht = referencias.percentil_ht(f["pcpm_efectivo"], nivel, f["fecha"])
@@ -223,7 +223,7 @@ def student_report(conn, institution_id: int, student: dict) -> dict:
         radar.insert(0, {"label": "Primera", "date": h["fecha"].iloc[0], "values": profile(h.iloc[0])})
     return clean({
         "student": student, "empty": False, "level": nivel, "framework": marco_key,
-        "expectedFrom": marco["adecuado_desde"], "expectedMinimumWcpm": minimum,
+        "expectedFrom": escalas.adecuado_desde(marco, nivel), "expectedMinimumWcpm": minimum,
         "history": history, "radar": {"axes": reportes.EJES_RADAR, "max": reportes.TOPE_RADAR, "series": radar},
         "words": _words(h), "errors": reportes.errores_frecuentes(h), "htSource": referencias.FUENTE_HT,
     })

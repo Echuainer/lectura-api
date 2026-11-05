@@ -49,7 +49,7 @@ def view(a: dict, job: dict | None = None, with_audio_url: bool = True) -> dict:
     marco, level, r = MARCOS[key], a["level"], a["result"]
     wcpm = effective_wcpm(a)
     category = escalas.clasificar(wcpm, level, marco) if wcpm is not None else None
-    minimum = dict(marco["niveles"].get(str(level), [])).get(marco["adecuado_desde"])
+    minimum = dict(marco["niveles"].get(str(level), [])).get(escalas.adecuado_desde(marco, level))
     fluency_min = (marco.get("fluidez_minima") or {}).get(str(level))
     doubtful = []
     if r:
