@@ -57,7 +57,8 @@ def _student_row(f) -> dict:
             "speedRange": f["rango_velocidad"], "fluency": f["fluidez"], "fluencyRange": f["rango_fluidez"],
             "accuracyPct": _round(f["precision_pct"], 1), "delta": _round(f["delta"], 1),
             "toReview": int(f["revisar"]), "group": f["grupo"], "groupLabel": reportes.GRUPOS[f["grupo"]][0],
-            "date": f["fecha"], "period": f["periodo"], "textTitle": f["titulo"], "errors": f["errores"]}
+            "date": f["fecha"], "period": f["periodo"], "textTitle": f["titulo"], "errors": f["errores"],
+            "framework": f["marco"]}
 
 
 def _groups(grupos: dict, total: int) -> list[dict]:

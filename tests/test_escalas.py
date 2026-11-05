@@ -48,3 +48,12 @@ def test_astoreca_cubre_1ro_con_cortes_mineduc_y_adecuado_desde_media_baja():
     # fluidez 1-based: 3 = palabra a palabra es el mínimo de 1°
     assert rango_fluidez(3, 1, a) == "Adecuado"
     assert rango_fluidez(2, 1, a) == "Bajo lo esperado"
+
+
+def test_convertir_fluidez_entre_marcos():
+    from core.escalas import convertir_fluidez
+    assert convertir_fluidez(1, "mineduc", "astoreca") == 3   # palabra a palabra
+    assert convertir_fluidez(4, "mineduc", "astoreca") == 5   # fluidez
+    assert convertir_fluidez(5, "astoreca", "mineduc") == 4
+    assert convertir_fluidez(2, "astoreca", "astoreca") == 2  # mismo marco: sin cambio
+    assert convertir_fluidez(None, "mineduc", "astoreca") is None
