@@ -15,6 +15,20 @@ def adecuado_desde(marco: dict, nivel) -> str:
     return (marco.get("adecuado_desde_por_nivel") or {}).get(str(nivel), marco["adecuado_desde"])
 
 
+# Equivalencia entre las escalas de fluidez (1-based) al cambiar el marco de una evaluación ya hecha.
+# shortcut: aproximada, por la descripción de cada nivel; el docente puede corregir la categoría después.
+CONVERSION_FLUIDEZ = {
+    ("mineduc", "astoreca"): {1: 3, 2: 4, 3: 4, 4: 5},
+    ("astoreca", "mineduc"): {1: 1, 2: 1, 3: 1, 4: 2, 5: 4},
+}
+
+
+def convertir_fluidez(valor: int | None, de: str, a: str) -> int | None:
+    if valor is None or de == a:
+        return valor
+    return CONVERSION_FLUIDEZ.get((de, a), {}).get(valor)
+
+
 def clasificar(pcpm: float, nivel: int, marco: dict) -> str | None:
     # Las escalas van de mayor a menor mínimo: gana el primer tramo que se cumple.
     for nombre, minimo in marco["niveles"].get(str(nivel), []):

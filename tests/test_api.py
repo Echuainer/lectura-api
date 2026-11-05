@@ -233,6 +233,11 @@ def test_full_flow(client, fake_storage, engine_ok):
     assert v3["category"] == "Media baja" and v3["speedRange"] == "Bajo lo esperado"  # Astoreca 5°: 120–135
     assert v3["fluencyLabel"] == "Lectura unidades cortas" and v3["fluencyRange"] == "Adecuado"
     assert v3["rasinskiTotal"][0] == 12
+    # changing the framework converts the fluency category to the new scale instead of dropping it
+    vm = client.patch(f"/api/lectura/assessments/{assessment_id}", json={"framework": "mineduc"}).json()
+    assert vm["expression"] == 2 and vm["fluencyLabel"].startswith("2 · Agrupa")
+    va = client.patch(f"/api/lectura/assessments/{assessment_id}", json={"framework": "astoreca"}).json()
+    assert va["expression"] == 4 and va["fluencyLabel"] == "Lectura unidades cortas"
     assert client.patch(f"/api/lectura/assessments/{assessment_id}", json={"expression": 9}).status_code == 400
     assert client.patch(f"/api/lectura/assessments/{assessment_id}", json={"rasinski": [5, 1, 1, 1]}).status_code == 400
     assert client.patch(f"/api/lectura/assessments/{assessment_id}", json={"unknown": 1}).status_code == 422

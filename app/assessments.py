@@ -107,6 +107,8 @@ def edit_fields(a: dict, changes: dict) -> dict:
     fields = {}
     if "framework" in changes:
         fields["framework"] = framework_key(changes["framework"])
+        if "expression" not in changes:  # al cambiar de marco la categoría de fluidez se convierte a la nueva escala
+            fields["expression"] = escalas.convertir_fluidez(a["expression"], framework_key(a["framework"]), fields["framework"])
     marco = MARCOS[fields.get("framework", framework_key(a["framework"]))]
     if "expression" in changes:
         e = changes["expression"]
