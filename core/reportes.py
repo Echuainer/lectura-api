@@ -161,7 +161,7 @@ def perfil_radar(fila, marco: dict, precision_minima: float) -> dict:
     frente a una referencia interna de 95% (no hay norma oficial para este eje)."""
     nivel = str(int(fila["nivel"]))
     tope = lambda v: None if v is None or pd.isna(v) else round(min(max(float(v), 0), TOPE_RADAR))
-    minimo = dict(marco["niveles"].get(nivel, [])).get(marco["adecuado_desde"])
+    minimo = dict(marco["niveles"].get(nivel, [])).get(escalas.adecuado_desde(marco, nivel))
     flu_ref = (marco.get("fluidez_minima") or {}).get(nivel) or len(marco["fluidez"])
     r = json.loads(fila["resultado_json"]) if isinstance(fila["resultado_json"], str) else {}
     leidas = r.get("palabras_leidas")
