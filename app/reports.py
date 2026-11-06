@@ -93,6 +93,11 @@ def course_report(conn, institution_id: int, course: dict, period: str | None) -
     if anterior is not None:
         distributions.append({"period": previous[0], "rows": reportes.distribucion(anterior, marco, nivel)})
     students = actual.assign(_p=actual["grupo"].map(PRIORITY)).sort_values(["_p", "pcpm_efectivo"])
+    radar_series = [{"label": "Esta medición", "period": period,
+                     "values": reportes.perfil_radar_curso(actual, MARCOS, PRECISION_MIN)}]
+    if anterior is not None:
+        radar_series.insert(0, {"label": "Medición anterior", "period": previous[0],
+                                "values": reportes.perfil_radar_curso(anterior, MARCOS, PRECISION_MIN)})
     return clean(base | {
         "empty": False, "period": period, "previousPeriod": previous[0] if previous else None,
         "level": nivel, "framework": marco_key, "frameworkName": marco["nombre"],
@@ -105,6 +110,7 @@ def course_report(conn, institution_id: int, course: dict, period: str | None) -
         "distributions": distributions,
         "groups": _groups(grupos, len(actual)), "incomplete": grupos["incompleto"],
         "rasinski": reportes.resumen_rasinski(actual),
+        "radar": {"axes": reportes.EJES_RADAR, "max": reportes.TOPE_RADAR, "series": radar_series},
         "students": [_student_row(f) for _, f in students.iterrows()],
         "errors": reportes.errores_frecuentes(actual),
     })
@@ -124,6 +130,7 @@ def synthesis_summary(report_df: pd.DataFrame, previous_df: pd.DataFrame | None)
         "precision_minima_pct": PRECISION_MIN,
         "n_bajo_precision_minima": int((actual["precision_pct"] < PRECISION_MIN).sum()),
         "por_categoria_fluidez": actual["fluidez"].dropna().value_counts().to_dict(),
+        "n_sin_fluidez": int(actual["fluidez"].isna().sum()),
         "n_en_riesgo": int(actual["riesgo"].sum()),
         "por_categoria": {x["categoria"]: x["n"] for x in reportes.distribucion(actual, marco, nivel)},
         "pcpm_minimo_por_categoria": dict(marco["niveles"].get(str(nivel), [])),
