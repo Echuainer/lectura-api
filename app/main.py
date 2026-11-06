@@ -1,4 +1,5 @@
 """lectura-api: reading fluency microservice of Colegio Smart."""
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -19,6 +20,9 @@ setup_logging(settings.log_level, settings.log_json)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    logging.getLogger("lectura.app").info("service started", extra={
+        "logLevel": settings.log_level, "logFormat": "json" if settings.log_json else "text",
+        "workerEnabled": settings.worker_enabled, "corsOrigins": len(settings.cors_allowed_origins)})
     worker = Worker(settings.worker_poll_seconds) if settings.worker_enabled else None
     if worker:
         worker.start()

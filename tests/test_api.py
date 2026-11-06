@@ -1,4 +1,5 @@
 import json
+import logging
 import types
 from datetime import datetime, timezone
 
@@ -401,3 +402,26 @@ def test_empty_reports(client):
     assert client.get("/api/lectura/reports/students/1000").json()["empty"] is True
     director = make_client(token(user_id=12, role=security.DIRECTIVO))
     assert director.get("/api/lectura/reports/institution").json()["empty"] is True
+
+
+def test_worker_logs_job_lifecycle(client, fake_storage, engine_ok, caplog):
+    caplog.set_level(logging.INFO)
+    assessment_id, job_id = _assess(client, fake_storage, run=False)
+    assert worker.requeue_interrupted() == 0
+    assert worker.run_pending() == 1
+    records = [r for r in caplog.records if r.name == "lectura.worker"]
+    started = next(r for r in records if r.getMessage() == "job started")
+    finished = next(r for r in records if r.getMessage() == "job finished")
+    assert started.jobId == finished.jobId == job_id and finished.assessmentId == assessment_id
+    assert finished.kind == "analyze" and finished.attempts == 1 and finished.status == "done"
+    assert finished.durationMs >= 0 and started.levelno == finished.levelno == logging.INFO
+
+    caplog.clear()
+    with worker.db.engine.begin() as conn:  # a job whose assessment is gone ends in error
+        conn.execute(update(db.reading_jobs).where(db.reading_jobs.c.id == job_id).values(status="running"))
+    assert worker.requeue_interrupted() == 1
+    w = worker.Worker(0.01)
+    w.start()
+    w.stop()
+    ready = next(r for r in caplog.records if r.getMessage() == "job queue ready")
+    assert ready.requeued == 0 and ready.prosodyEnqueued == 0 and ready.levelno == logging.INFO

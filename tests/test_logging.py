@@ -1,5 +1,8 @@
 import json
 import logging
+import time
+
+import pytest
 
 from app import logging_config
 from conftest import make_client, token
@@ -73,3 +76,65 @@ def test_no_email_in_any_log_line(client, capsys):
     logging_config.setup_logging("INFO", json_output=True)
     client.get("/api/lectura/me")
     assert "@colegio.cl" not in capsys.readouterr().out
+
+
+# --- Log levels by severity ---------------------------------------------------------------------
+
+def _auth_records(caplog):
+    return [r for r in caplog.records if r.name == "lectura.auth"]
+
+
+def test_expired_token_is_info(caplog):
+    from app import security
+    caplog.set_level(logging.INFO)
+    expired = token(exp=int(time.time()) - 60)
+    with pytest.raises(Exception):
+        security.decode_token(expired)
+    [rec] = _auth_records(caplog)
+    assert rec.levelno == logging.INFO and "ExpiredSignatureError" in rec.getMessage()
+    assert expired not in rec.getMessage()
+
+
+def test_token_with_bad_signature_is_warning(caplog):
+    import jwt
+    from app import security
+    caplog.set_level(logging.INFO)
+    forged = jwt.encode({"iss": "colegio-smart-api", "aud": "colegio-smart-app", "exp": 9999999999},
+                        "another-secret-another-secret-another-123", algorithm="HS256")
+    with pytest.raises(Exception):
+        security.decode_token(forged)
+    [rec] = _auth_records(caplog)
+    assert rec.levelno == logging.WARNING and forged not in rec.getMessage()
+
+
+def test_request_without_cookie_is_info(engine, fake_storage, caplog):
+    caplog.set_level(logging.INFO)
+    assert make_client().get("/api/lectura/me").status_code == 401
+    [rec] = _auth_records(caplog)
+    assert rec.levelno == logging.INFO and "no auth cookie" in rec.getMessage()
+
+
+def test_storage_exists_is_silent_on_404_and_warns_on_other_errors(monkeypatch, caplog):
+    from types import SimpleNamespace
+
+    from botocore.exceptions import ClientError
+
+    from app import storage
+    caplog.set_level(logging.DEBUG)
+
+    def client_raising(exc):
+        def head_object(**kw):
+            raise exc
+        return SimpleNamespace(head_object=head_object)
+
+    for code in ("404", "NoSuchKey", "NotFound"):
+        monkeypatch.setattr(storage, "_client", lambda code=code: client_raising(
+            ClientError({"Error": {"Code": code}}, "HeadObject")))
+        assert storage.exists("k") is False
+    assert not [r for r in caplog.records if r.name == "lectura.storage"]
+
+    for exc in (ClientError({"Error": {"Code": "403"}}, "HeadObject"), TimeoutError("timeout")):
+        monkeypatch.setattr(storage, "_client", lambda exc=exc: client_raising(exc))
+        assert storage.exists("k") is False
+    records = [r for r in caplog.records if r.name == "lectura.storage"]
+    assert len(records) == 2 and all(r.levelno == logging.WARNING and r.exc_info for r in records)

@@ -78,8 +78,10 @@ def decode_token(token: str) -> dict:
                           issuer=settings.jwt_issuer, audience=settings.jwt_audience,
                           options={"require": ["exp", "iss", "aud"]})
     except jwt.PyJWTError as e:
-        # like JwtAuthFilter: the reason, never the token
-        log.warning("[AUTH] invalid token: %s: %s", type(e).__name__, e)
+        # like JwtAuthFilter: the reason, never the token. An expired session is normal (INFO); anything else
+        # (bad signature, malformed, wrong aud/iss) is suspicious or a misconfiguration (WARNING)
+        level = logging.INFO if isinstance(e, jwt.ExpiredSignatureError) else logging.WARNING
+        log.log(level, "[AUTH] invalid token: %s: %s", type(e).__name__, e)
         raise _unauthorized() from e
 
 
@@ -102,7 +104,7 @@ def current_user(request: Request) -> AuthContext:
         header = request.headers.get("Authorization", "")
         token = header[7:] if header.startswith("Bearer ") else None
     if not token:
-        log.warning("[AUTH] no auth cookie | %s %s | cookies=%s", request.method, request.url.path,
+        log.info("[AUTH] no auth cookie | %s %s | cookies=%s", request.method, request.url.path,
                     sorted(request.cookies), extra={"reason": "no_cookie"})
         raise _unauthorized()
     claims = decode_token(token)

@@ -38,4 +38,6 @@ En producción los logs salen en JSON, una línea por evento (`LOG_FORMAT=json` 
 
 Campos comunes a los tres backends: `timestamp`, `level`, `service`, `logger`, `message`, `traceId`, `userId`, `institutionId`, `exception`. La línea de acceso (una por request) agrega `method`, `path`, `route`, `status` y `durationMs`; `route` es la plantilla (`/api/.../{id}`) para agrupar por endpoint y solo aparece si el request llegó a una ruta (un 404 o un 403 de CSRF no la traen).
 
+Niveles: ERROR solo para fallos reales (5xx, trabajos que fallan); sesión vencida o sin sesión es INFO, un token inválido por otra causa es WARNING. Un monitor sobre `level == "ERROR"` no debe saltar por ruido esperado.
+
 **Nunca** registrar correos, nombres, RUT, contraseñas, tokens ni cuerpos de requests o prompts de IA: los logs se envían a un servicio externo y hay datos de menores. Identificar personas solo por `userId`.

@@ -1,12 +1,18 @@
 """Reading audio in Cloudflare R2 (S3 API). The browser uploads and plays through presigned URLs, like
 api-colegio-smart: the audio never goes through this service except when the worker analyzes it."""
+import logging
 import tempfile
 import uuid
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 
+from botocore.exceptions import ClientError
+
 from app.settings import settings
+
+log = logging.getLogger("lectura.storage")
+NOT_FOUND_CODES = {"404", "NoSuchKey", "NotFound"}
 
 EXTENSIONS = {"audio/webm": "webm", "audio/mp4": "m4a", "audio/ogg": "ogg", "audio/wav": "wav", "audio/x-wav": "wav",
               "audio/mpeg": "mp3", "audio/x-m4a": "m4a"}
@@ -49,7 +55,13 @@ def exists(key: str) -> bool:
     try:
         _client().head_object(Bucket=settings.r2_bucket, Key=key)
         return True
-    except Exception:
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") in NOT_FOUND_CODES:  # the object is not there: normal
+            return False
+        log.warning("could not check whether an object exists", exc_info=True)
+        return False
+    except Exception:  # network, timeout, credentials...
+        log.warning("could not check whether an object exists", exc_info=True)
         return False
 
 

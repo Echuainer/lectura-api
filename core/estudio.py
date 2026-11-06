@@ -4,6 +4,7 @@ El modelo corre en segundo plano (app/worker.py) y su salida se guarda en la bas
 Los informes de avance no incluyen puntajes ni medidas del modelo, para mantener el ciego.
 """
 import json
+import logging
 import math
 import statistics
 from collections import Counter
@@ -12,6 +13,8 @@ from datetime import datetime
 import pandas as pd
 
 from core import referencias
+
+log = logging.getLogger("lectura.study")
 
 HITOS = (30, 100)
 DIMENSIONES = list(referencias.RASINSKI)
@@ -251,6 +254,7 @@ def _version():
     try:
         return _prosodia().VERSION
     except Exception:
+        log.warning("prosody version unavailable", exc_info=True)
         return "—"
 
 

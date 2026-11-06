@@ -1,6 +1,8 @@
 """Redacción de informes con la Claude API. Solo recibe datos agregados, nunca nombres."""
 import json
+import logging
 import os
+import time
 
 import anthropic
 
@@ -9,6 +11,7 @@ from core import escalas
 MODELO_ALUMNO = "claude-haiku-5-5"
 MODELO_CURSO = "claude-sonnet-5-5"
 MAX_LISTA = 15
+log = logging.getLogger("lectura.ai")  # never the prompt or the response; userId comes from the request context
 
 SISTEMA_ALUMNO = """Eres especialista en fluidez lectora y acompañas a docentes de colegios chilenos (5° a 8° básico). Redactas el informe de lectura en voz alta de un alumno, para su profesor y, si corresponde, para sus apoderados.
 
@@ -80,15 +83,26 @@ def construir_datos_alumno(nivel, metricas: dict, categoria, expresion, detalle:
     return datos
 
 
-def _generar(modelo: str, sistema: str, datos: dict, max_tokens: int) -> str:
+def _generar(modelo: str, sistema: str, datos: dict, max_tokens: int, op: str = "report") -> str:
     contenido = "Datos (JSON):\n" + json.dumps(datos, ensure_ascii=False)
     for intento in range(2):
-        respuesta = _cliente().messages.create(
-            model=modelo,
-            max_tokens=max_tokens,
-            system=[{"type": "text", "text": sistema, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": contenido}],
-        )
+        started = time.perf_counter()
+        try:
+            respuesta = _cliente().messages.create(
+                model=modelo,
+                max_tokens=max_tokens,
+                system=[{"type": "text", "text": sistema, "cache_control": {"type": "ephemeral"}}],
+                messages=[{"role": "user", "content": contenido}],
+            )
+        except Exception:
+            log.warning("ai call failed", exc_info=True, extra={
+                "op": op, "model": modelo, "durationMs": round((time.perf_counter() - started) * 1000, 1)})
+            raise
+        uso = getattr(respuesta, "usage", None)
+        log.info("ai call", extra={
+            "op": op, "model": modelo, "inputTokens": getattr(uso, "input_tokens", None),
+            "outputTokens": getattr(uso, "output_tokens", None),
+            "durationMs": round((time.perf_counter() - started) * 1000, 1)})
         texto = "".join(b.text for b in respuesta.content if b.type == "text")
         if respuesta.stop_reason != "max_tokens":
             return texto
@@ -99,8 +113,8 @@ def _generar(modelo: str, sistema: str, datos: dict, max_tokens: int) -> str:
 
 
 def informe_alumno(datos: dict) -> str:
-    return _generar(MODELO_ALUMNO, SISTEMA_ALUMNO, datos, 700)
+    return _generar(MODELO_ALUMNO, SISTEMA_ALUMNO, datos, 700, "student_report")
 
 
 def informe_curso(curso: str, resumen: dict) -> str:
-    return _generar(MODELO_CURSO, SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000)
+    return _generar(MODELO_CURSO, SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000, "course_synthesis")

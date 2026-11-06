@@ -20,10 +20,12 @@ TABLA DE REGLAS v1 (se evalúa de arriba abajo; la primera que se cumple gana)
       4: R>=8 y (D None o D<=-2) y A>=15 | 3: R>=5 y A>=10 | 2: R>=3 | 1: resto
       R o A None -> None.
 """
+import logging
 import math
 
 import numpy as np
 
+log = logging.getLogger("lectura.prosody")
 VERSION = "v1"
 DIMENSIONES = ["Expresión y volumen", "Fraseo", "Suavidad", "Ritmo"]
 
@@ -184,14 +186,17 @@ def evaluar(ruta_audio, detalle):
         snd = parselmouth.Sound(np.asarray(decode_audio(ruta_audio), dtype=np.float64),
                                 sampling_frequency=16000)
     except Exception as e:
+        log.warning("prosody: could not decode the audio", exc_info=True)
         out["error"] = f"audio: {e}"
     try:
         try:
             out["medidas"], out["calidad"] = medidas_desde(snd, detalle)
         except Exception as e:  # fallo acústico: se conservan las medidas de tiempo
+            log.warning("prosody: acoustic measures failed", exc_info=True)
             out["error"] = f"acustica: {e}"
             out["medidas"], out["calidad"] = medidas_desde(None, detalle)
         out["puntajes"] = puntuar(out["medidas"])
     except Exception as e:
+        log.warning("prosody: scoring failed", exc_info=True)
         out["error"] = f"{out.get('error', '')} {e}".strip()
     return out

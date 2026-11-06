@@ -27,3 +27,16 @@ def test_si_el_reintento_tambien_se_corta_avisa(monkeypatch):
     cliente = _cliente([_respuesta("a", "max_tokens"), _respuesta("b", "max_tokens")], [])
     monkeypatch.setattr(informes, "_cliente", lambda: cliente)
     assert "quedó cortado" in informes._generar("m", "s", {}, 10)
+
+
+def test_llamada_a_ia_deja_una_linea_sin_contenido(monkeypatch, caplog):
+    import logging
+    caplog.set_level(logging.INFO)
+    resp = _respuesta("texto secreto", "end_turn")
+    resp.usage = SimpleNamespace(input_tokens=11, output_tokens=7)
+    monkeypatch.setattr(informes, "_cliente", lambda: _cliente([resp], []))
+    informes._generar("m", "prompt secreto", {"x": 1}, 100, "student_report")
+    [rec] = [r for r in caplog.records if r.name == "lectura.ai"]
+    assert rec.getMessage() == "ai call" and rec.op == "student_report" and rec.model == "m"
+    assert rec.inputTokens == 11 and rec.outputTokens == 7 and rec.durationMs >= 0
+    assert "secreto" not in str(rec.__dict__)

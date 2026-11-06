@@ -5,6 +5,7 @@ One thread per process takes pending jobs from reading_jobs. The models stay loa
 """
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy import and_, select, update
@@ -85,12 +86,23 @@ def _finish(job_id: int, status: str, error: str | None = None) -> None:
 
 
 def run_job(job: dict) -> None:
+    fields = {"jobId": job["id"], "kind": job["kind"], "assessmentId": job["assessment_id"],
+              "attempts": job["attempts"]}
+    log.info("job started", extra=fields)
+    started = time.perf_counter()
+    status = _run_job(job)
+    log.info("job finished", extra=fields | {
+        "status": status, "durationMs": round((time.perf_counter() - started) * 1000, 1)})
+
+
+def _run_job(job: dict) -> str:
+    """Runs the job and returns how it ended: "done", "error" or "requeued"."""
     a = db.reading_assessments
     with db.engine.begin() as conn:
         row = conn.execute(repository._assessment_query().where(a.c.id == job["assessment_id"])).first()
     if row is None:
         _finish(job["id"], "error", "La evaluación ya no existe")
-        return
+        return "error"
     assessment = repository._row(row)
     try:
         with storage.temp_dir() as folder:  # no transaction open while the model runs (it takes seconds)
@@ -104,10 +116,11 @@ def run_job(job: dict) -> None:
         if job["attempts"] < MAX_ATTEMPTS and job["kind"] == "prosody":
             with db.engine.begin() as conn:  # the study model is retried once; the teacher retries analysis by hand
                 conn.execute(update(db.reading_jobs).where(db.reading_jobs.c.id == job["id"]).values(status="pending"))
-            return
+            return "requeued"
         _finish(job["id"], "error", f"No se pudo analizar el audio: {e}")
-        return
+        return "error"
     _finish(job["id"], "done")
+    return "done"
 
 
 def run_pending() -> int:
@@ -122,10 +135,12 @@ def run_pending() -> int:
         n += 1
 
 
-def requeue_interrupted() -> None:
-    """Jobs left running by a restart go back to the queue."""
+def requeue_interrupted() -> int:
+    """Jobs left running by a restart go back to the queue. Returns how many."""
     with db.engine.begin() as conn:
-        conn.execute(update(db.reading_jobs).where(db.reading_jobs.c.status == "running").values(status="pending"))
+        res = conn.execute(update(db.reading_jobs).where(db.reading_jobs.c.status == "running").values(
+            status="pending"))
+    return res.rowcount
 
 
 def enqueue_missing_prosody() -> int:
@@ -134,6 +149,7 @@ def enqueue_missing_prosody() -> int:
     try:
         version = _prosodia().VERSION
     except Exception:
+        log.warning("prosody model unavailable; no prosody jobs enqueued", exc_info=True)
         return 0
     a, j = db.reading_assessments, db.reading_jobs
     n = 0
@@ -158,8 +174,9 @@ class Worker:
 
     def start(self):
         try:
-            requeue_interrupted()
-            enqueue_missing_prosody()
+            requeued = requeue_interrupted()
+            enqueued = enqueue_missing_prosody()
+            log.info("job queue ready", extra={"requeued": requeued, "prosodyEnqueued": enqueued})
         except Exception:  # the API must start even if the queue cannot be prepared; the loop retries
             log.exception("could not prepare the job queue")
         self._thread.start()
