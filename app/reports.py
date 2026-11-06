@@ -124,6 +124,7 @@ def synthesis_summary(report_df: pd.DataFrame, previous_df: pd.DataFrame | None)
         "precision_minima_pct": PRECISION_MIN,
         "n_bajo_precision_minima": int((actual["precision_pct"] < PRECISION_MIN).sum()),
         "por_categoria_fluidez": actual["fluidez"].dropna().value_counts().to_dict(),
+        "n_sin_fluidez": int(actual["fluidez"].isna().sum()),
         "n_en_riesgo": int(actual["riesgo"].sum()),
         "por_categoria": {x["categoria"]: x["n"] for x in reportes.distribucion(actual, marco, nivel)},
         "pcpm_minimo_por_categoria": dict(marco["niveles"].get(str(nivel), [])),
