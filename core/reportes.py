@@ -175,6 +175,17 @@ def perfil_radar(fila, marco: dict, precision_minima: float) -> dict:
     }
 
 
+def perfil_radar_curso(df: pd.DataFrame, marcos: dict, precision_minima: float) -> dict:
+    """Perfil del curso: promedio por eje del perfil de cada estudiante (cada uno con el marco de su evaluación).
+    Un eje sin dato en ningún estudiante queda en None."""
+    perfiles = [perfil_radar(f, marcos[f["marco"]], precision_minima) for _, f in df.iterrows()]
+    medias = {}
+    for eje in EJES_RADAR:
+        valores = [p[eje] for p in perfiles if p[eje] is not None]
+        medias[eje] = round(sum(valores) / len(valores)) if valores else None
+    return medias
+
+
 def resumen_rasinski(df: pd.DataFrame) -> dict | None:
     """Promedios de la escala de Rasinski entre quienes la tienen registrada (None si nadie la tiene)."""
     from core.referencias import RASINSKI

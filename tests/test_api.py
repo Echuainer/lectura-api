@@ -339,9 +339,14 @@ def test_reports(client, fake_storage, engine_ok):
     assert r["students"][1]["delta"] == 40
     assert sum(g["n"] for g in r["groups"]) == 2 and len(r["distributions"]) == 2
     assert r["rasinski"]["n"] == 2
+    # course radar: average profile per axis, previous measurement first
+    assert r["radar"]["axes"] == ["Velocidad", "Precisión", "Fluidez", "Continuidad"]
+    assert [x["label"] for x in r["radar"]["series"]] == ["Medición anterior", "Esta medición"]
+    assert all(v is None or 0 <= v <= r["radar"]["max"] for x in r["radar"]["series"] for v in x["values"].values())
 
     old = client.get("/api/lectura/reports/courses/100?period=2026-04").json()
     assert old["kpis"]["evaluated"] == 1 and old["previousPeriod"] is None
+    assert [x["label"] for x in old["radar"]["series"]] == ["Esta medición"]
 
     x = client.get("/api/lectura/reports/courses/100/export")
     assert x.status_code == 200 and x.headers["content-type"].startswith("application/vnd.openxmlformats")
