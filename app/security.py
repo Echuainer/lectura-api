@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app import db
+from app.logging_config import request_context
 from app.settings import settings
 
 # com.educa.api.security.InstitutionRole
@@ -102,7 +103,7 @@ def current_user(request: Request) -> AuthContext:
         token = header[7:] if header.startswith("Bearer ") else None
     if not token:
         log.warning("[AUTH] no auth cookie | %s %s | cookies=%s", request.method, request.url.path,
-                    sorted(request.cookies))
+                    sorted(request.cookies), extra={"reason": "no_cookie"})
         raise _unauthorized()
     claims = decode_token(token)
     if claims.get("mustChangePassword") or claims.get("enabled") is False or _is_stale(claims):
@@ -111,6 +112,9 @@ def current_user(request: Request) -> AuthContext:
         raise _unauthorized()
     if claims.get("institutionId") is None or claims.get("userId") is None:
         raise HTTPException(status_code=403, detail="El usuario no pertenece a una institución")
+    ctx = request_context.get()
+    if ctx is not None:  # the access log and every log line of this request carry who made it
+        ctx.update(userId=int(claims["userId"]), institutionId=int(claims["institutionId"]))
     return AuthContext(
         user_id=int(claims["userId"]), email=claims.get("sub", ""), institution_id=int(claims["institutionId"]),
         role_id=claims.get("institutionRoleId"), teacher_id=claims.get("teacherId"),

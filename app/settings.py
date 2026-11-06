@@ -37,6 +37,10 @@ class Settings:
     r2_bucket: str = field(default_factory=lambda: os.environ.get("R2_READING_BUCKET", ""))
     presigned_ttl_seconds: int = field(default_factory=lambda: int(os.environ.get("PRESIGNED_TTL_SECONDS", "900")))
 
+    # LOG_FORMAT=json: one JSON object per line (production); anything else: readable text for local development
+    log_level: str = field(default_factory=lambda: os.environ.get("LOG_LEVEL", "INFO"))
+    log_json: bool = field(default_factory=lambda: os.environ.get("LOG_FORMAT", "text").strip().lower() == "json")
+
     # Run the analysis worker inside this process. Keep a single process: each one loads the models (~2 GB).
     worker_enabled: bool = field(default_factory=lambda: _bool("WORKER_ENABLED", True))
     worker_poll_seconds: float = field(default_factory=lambda: float(os.environ.get("WORKER_POLL_SECONDS", "1.0")))

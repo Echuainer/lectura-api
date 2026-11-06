@@ -1,4 +1,6 @@
 """Assessment flow: create (with audio upload URL) → analyze (background job) → review (autosave) → complete."""
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -7,6 +9,7 @@ from app import repository, storage
 from app.deps import assessment_or_404, bad_request, get_conn
 from app.security import DIRECTIVO, AuthContext, staff
 
+log = logging.getLogger("lectura.assessments")
 router = APIRouter(prefix="/api/lectura")
 
 
@@ -163,6 +166,7 @@ def complete(assessment_id: int, body: CompleteIn, ctx: AuthContext = Depends(st
         try:
             repository.update_assessment(conn, assessment_id, report=service.student_report(a))
         except Exception as e:
+            log.exception("AI report failed", extra={"assessmentId": assessment_id})
             report_error = f"El informe con IA falló: {e}"
     return _view(conn, repository.get_assessment(conn, ctx.institution_id, assessment_id)) | {
         "reportError": report_error}
@@ -181,5 +185,6 @@ def discard(assessment_id: int, ctx: AuthContext = Depends(staff), conn=Depends(
     if a["audio_key"]:
         try:
             storage.delete(a["audio_key"])
-        except Exception:
-            pass  # the row is gone; an orphan object is cleaned up later (README, "Pendientes")
+        except Exception:  # the row is gone; an orphan object is cleaned up later (README, "Pendientes")
+            log.warning("could not delete the audio of a discarded assessment", exc_info=True,
+                        extra={"assessmentId": assessment_id})

@@ -1,5 +1,4 @@
 """lectura-api: reading fluency microservice of Colegio Smart."""
-import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -9,12 +8,13 @@ load_dotenv()
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
+from app.logging_config import RequestLogMiddleware, setup_logging  # noqa: E402
 from app.routers import assessments, catalog, reports  # noqa: E402
 from app.security import CsrfMiddleware  # noqa: E402
 from app.settings import settings  # noqa: E402
 from app.worker import Worker  # noqa: E402
 
-logging.basicConfig(level=logging.INFO)
+setup_logging(settings.log_level, settings.log_json)
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.add_middleware(CsrfMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_allowed_origins, allow_credentials=True,
                    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                    allow_headers=["Content-Type", "X-XSRF-TOKEN", "traceparent"])
+app.add_middleware(RequestLogMiddleware)  # last added = outermost: it sees every request, even a CORS or CSRF reject
 for module in (catalog, assessments, reports):
     app.include_router(module.router)
 

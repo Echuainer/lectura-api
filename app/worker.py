@@ -99,7 +99,8 @@ def run_job(job: dict) -> None:
             with db.engine.begin() as conn:
                 repository.update_assessment(conn, assessment["id"], **fields)
     except Exception as e:
-        log.exception("job %s (%s) failed", job["id"], job["kind"])
+        log.exception("job failed", extra={"jobId": job["id"], "kind": job["kind"], "attempts": job["attempts"],
+                                           "assessmentId": job["assessment_id"]})
         if job["attempts"] < MAX_ATTEMPTS and job["kind"] == "prosody":
             with db.engine.begin() as conn:  # the study model is retried once; the teacher retries analysis by hand
                 conn.execute(update(db.reading_jobs).where(db.reading_jobs.c.id == job["id"]).values(status="pending"))

@@ -1,10 +1,13 @@
 """Results (per course, per text, per student), Coordination and the prosody validation study."""
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app import reports, repository
 from app.deps import MARKDOWN, XLSX, bad_request, course_or_404, download, get_conn
 from app.security import AuthContext, admins, directors, staff
 
+log = logging.getLogger("lectura.reports")
 router = APIRouter(prefix="/api/lectura/reports")
 
 
@@ -40,6 +43,7 @@ def course_synthesis(course_id: int, period: str, ctx: AuthContext = Depends(sta
     except ValueError as e:
         raise bad_request(e)
     except Exception as e:
+        log.exception("course synthesis failed", extra={"courseId": course_id})
         raise HTTPException(502, f"No se pudo generar la síntesis: {e}")
 
 
