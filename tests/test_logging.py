@@ -47,6 +47,28 @@ def test_access_log_for_rejected_request_and_quiet_health(engine, fake_storage, 
     assert "userId" not in access[0] and access[0]["traceId"]
 
 
+def test_access_log_route_is_template_while_path_keeps_real_id(client, capsys):
+    logging_config.setup_logging("INFO", json_output=True)
+    client.get("/api/lectura/courses/82/students")
+    e = [x for x in _lines(capsys) if x["logger"] == "lectura.access"][0]
+    assert e["path"] == "/api/lectura/courses/82/students"
+    assert e["route"] == "/api/lectura/courses/{course_id}/students"
+
+
+def test_access_log_omits_route_for_404_and_csrf_403(engine, fake_storage, client, capsys):
+    logging_config.setup_logging("INFO", json_output=True)
+    anonymous = make_client()
+    assert anonymous.get("/api/lectura/me").status_code == 401
+    assert client.get("/api/lectura/no-existe/7").status_code == 404
+    del client.headers["X-XSRF-TOKEN"]
+    assert client.post("/api/lectura/texts", json={}).status_code == 403
+    access = [x for x in _lines(capsys) if x["logger"] == "lectura.access"]
+    assert [x["status"] for x in access] == [401, 404, 403]
+    assert all("route" not in x for x in access[1:])
+    # a 401 raised by an auth dependency already matched its route, so it does carry the template
+    assert access[0]["route"] == ("/api/lectura/me")
+
+
 def test_no_email_in_any_log_line(client, capsys):
     logging_config.setup_logging("INFO", json_output=True)
     client.get("/api/lectura/me")

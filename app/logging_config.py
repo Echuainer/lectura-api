@@ -66,7 +66,8 @@ def _trace_id(headers: list[tuple[bytes, bytes]]) -> str:
 
 class RequestLogMiddleware:
     """Pure ASGI (not BaseHTTPMiddleware) so the context variable reaches the endpoints and the worker threads
-    they start. Logs one line per request with method, path, status and duration."""
+    they start. Logs one line per request with method, path,
+    route (template, when matched), status and duration."""
 
     def __init__(self, app):
         self.app = app
@@ -94,7 +95,12 @@ class RequestLogMiddleware:
         finally:
             if scope["path"] not in QUIET_PATHS:
                 code = status["code"]
-                self.log.log(logging.ERROR if code >= 500 else logging.INFO, "request", extra={
-                    "method": scope["method"], "path": scope["path"], "status": code,
-                    "durationMs": round((time.perf_counter() - started) * 1000, 1)})
+                fields = {"method": scope["method"], "path": scope["path"], "status": code,
+                          "durationMs": round((time.perf_counter() - started) * 1000, 1)}
+                # Template of the matched route ("/api/x/{id}"), set by Starlette's router: lets logs group by endpoint.
+                # Requests rejected before routing (CSRF, CORS, 404) have none, and then the field is left out.
+                route = getattr(scope.get("route"), "path", None)
+                if route:
+                    fields["route"] = route
+                self.log.log(logging.ERROR if code >= 500 else logging.INFO, "request", extra=fields)
             request_context.reset(token)

@@ -31,3 +31,11 @@ TEST_DATABASE_URL=postgresql+psycopg://postgres@localhost:55432/postgres .venv/b
 ```
 
 La segunda línea corre la API sobre Postgres con las migraciones reales. Usarla al cambiar SQL.
+
+## Logs
+
+En producción los logs salen en JSON, una línea por evento (`LOG_FORMAT=json` en el Dockerfile; ver `app/logging_config.py`). Coolify los envía a Axiom.
+
+Campos comunes a los tres backends: `timestamp`, `level`, `service`, `logger`, `message`, `traceId`, `userId`, `institutionId`, `exception`. La línea de acceso (una por request) agrega `method`, `path`, `route`, `status` y `durationMs`; `route` es la plantilla (`/api/.../{id}`) para agrupar por endpoint y solo aparece si el request llegó a una ruta (un 404 o un 403 de CSRF no la traen).
+
+**Nunca** registrar correos, nombres, RUT, contraseñas, tokens ni cuerpos de requests o prompts de IA: los logs se envían a un servicio externo y hay datos de menores. Identificar personas solo por `userId`.
