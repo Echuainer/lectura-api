@@ -321,6 +321,24 @@ def test_delete_saved_assessment_updates_reports_and_drops_synthesis(client, fak
     assert client.delete(f"/api/lectura/assessments/{keep}").status_code == 409
 
 
+def test_exclude_and_restore_assessment(client, fake_storage, engine_ok):
+    keep = _completed(client, fake_storage, 1000, "2026-10")
+    out = _completed(client, fake_storage, 1001, "2026-10")
+    url = "/api/lectura/reports/courses/100/synthesis?period=2026-10"
+    client.post(url)
+
+    assert client.post(f"/api/lectura/assessments/{out}/exclude").status_code == 200
+    assert client.post(f"/api/lectura/assessments/{out}/exclude").status_code == 409  # already excluded
+    assert client.get(url).json() is None  # the synthesis counted it
+    assert [a["id"] for a in client.get("/api/lectura/assessments?courseId=100").json()] == [keep]
+    assert [a["id"] for a in client.get("/api/lectura/assessments/excluded?studentId=1001").json()] == [out]
+    assert client.get(f"/api/lectura/assessments/{out}").status_code == 200  # still stored, audio untouched
+
+    assert client.post(f"/api/lectura/assessments/{out}/restore").status_code == 200
+    assert {a["id"] for a in client.get("/api/lectura/assessments?courseId=100").json()} == {keep, out}
+    assert client.get("/api/lectura/assessments/excluded?studentId=1001").json() == []
+
+
 def test_requeue_and_missing_prosody(client, fake_storage, engine_ok):
     assessment_id, _ = _assess(client, fake_storage)
     client.patch(f"/api/lectura/assessments/{assessment_id}", json={"expression": 4})

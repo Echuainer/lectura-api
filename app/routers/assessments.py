@@ -60,6 +60,13 @@ def list_assessments(courseId: int | None = None, studentId: int | None = None, 
     return [service.summary(a) for a in rows]
 
 
+@router.get("/assessments/excluded")
+def excluded(studentId: int, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
+    """Assessments the user chose not to consider for one student (they can be restored)."""
+    rows = repository.list_assessments(conn, ctx.institution_id, student_id=studentId, status="excluded")
+    return [service.summary(a) for a in rows]
+
+
 @router.get("/assessments/drafts")
 def drafts(ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
     """Unfinished assessments of the current user ("Evaluaciones sin terminar")."""
@@ -170,6 +177,31 @@ def complete(assessment_id: int, body: CompleteIn, ctx: AuthContext = Depends(st
             report_error = f"El informe con IA falló: {e}"
     return _view(conn, repository.get_assessment(conn, ctx.institution_id, assessment_id)) | {
         "reportError": report_error}
+
+
+def _set_counted(assessment_id: int, ctx, conn, *, from_status: str, to_status: str, message: str):
+    a = assessment_or_404(conn, ctx.institution_id, assessment_id)
+    _can_edit(ctx, a)
+    if a["status"] != from_status:
+        raise HTTPException(409, message)
+    repository.update_assessment(conn, assessment_id, status=to_status)
+    if a["course_id"] and a["period"]:  # the stored synthesis was written with the other set of assessments
+        repository.delete_synthesis(conn, ctx.institution_id, a["course_id"], a["period"])
+    return _view(conn, repository.get_assessment(conn, ctx.institution_id, assessment_id))
+
+
+@router.post("/assessments/{assessment_id}/exclude")
+def exclude(assessment_id: int, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
+    """Stops counting a saved assessment in reports and statistics, without deleting it."""
+    return _set_counted(assessment_id, ctx, conn, from_status="complete", to_status="excluded",
+                        message="Solo se pueden excluir evaluaciones guardadas")
+
+
+@router.post("/assessments/{assessment_id}/restore")
+def restore(assessment_id: int, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
+    """Counts an excluded assessment again."""
+    return _set_counted(assessment_id, ctx, conn, from_status="excluded", to_status="complete",
+                        message="La evaluación no está excluida")
 
 
 @router.delete("/assessments/{assessment_id}", status_code=204)
