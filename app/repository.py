@@ -22,7 +22,7 @@ ASSESSMENT_FIELDS = frozenset({
     "unexpected_pauses", "category", "expression", "wcpm_adjusted", "observation", "report", "evaluator_name",
     "framework", "status", "rasinski", "rasinski_2", "prosody_model",
 })
-STATUS_ES = {"complete": "completa", "draft": "borrador"}
+STATUS_ES = {"complete": "completa", "draft": "borrador", "excluded": "excluida"}
 
 
 def now():
@@ -212,6 +212,8 @@ def list_assessments(conn: Connection, institution_id: int, *, course_id=None, s
                      status="complete", evaluator_user_id=None, text_id=None) -> list[dict]:
     a = db.reading_assessments
     q = _assessment_query().where(a.c.institution_id == institution_id)
+    if status is None:  # "any status" still leaves out the excluded ones: they do not count anywhere
+        q = q.where(a.c.status != "excluded")
     for column, value in ((a.c.course_id, course_id), (a.c.student_id, student_id), (a.c.period, period),
                           (a.c.status, status), (a.c.evaluator_user_id, evaluator_user_id), (a.c.text_id, text_id)):
         if value is not None:
