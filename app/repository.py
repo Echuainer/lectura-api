@@ -306,6 +306,12 @@ def get_synthesis(conn: Connection, institution_id: int, course_id: int, period:
             "createdBy": row.created_by_email, "outdated": bool(last and _aware(last) > created)}
 
 
+def delete_synthesis(conn: Connection, institution_id: int, course_id: int, period: str) -> None:
+    s = db.reading_course_syntheses
+    conn.execute(delete(s).where(and_(s.c.institution_id == institution_id, s.c.course_id == course_id,
+                                      s.c.period == period)))
+
+
 def save_synthesis(conn: Connection, institution_id: int, course_id: int, period: str, content: str,
                    user_id: int, email: str) -> None:
     s = db.reading_course_syntheses
