@@ -246,7 +246,7 @@ def test_full_flow(client, fake_storage, engine_ok):
     done = client.post(f"/api/lectura/assessments/{assessment_id}/complete", json={"generateReport": True}).json()
     assert done["status"] == "complete" and done["report"] == "Informe nivel 5" and done["reportError"] is None
     assert client.get("/api/lectura/assessments/drafts").json() == []
-    assert client.delete(f"/api/lectura/assessments/{assessment_id}").status_code == 409  # only drafts
+    assert client.get(f"/api/lectura/assessments/{assessment_id}").json()["status"] == "complete"  # deletable: see test_delete_saved_*
 
     # the hidden study model runs in the background and is stored, never shown
     assert worker.run_pending() == 1
@@ -300,6 +300,25 @@ def test_discard_draft_deletes_audio(client, fake_storage, engine_ok):
     assert client.delete(f"/api/lectura/assessments/{assessment_id}").status_code == 204
     assert fake_storage.deleted == [key]
     assert client.get(f"/api/lectura/assessments/{assessment_id}").status_code == 404
+
+
+def test_delete_saved_assessment_updates_reports_and_drops_synthesis(client, fake_storage, engine_ok):
+    keep = _completed(client, fake_storage, 1000, "2026-10")
+    gone = _completed(client, fake_storage, 1001, "2026-10")
+    url = "/api/lectura/reports/courses/100/synthesis?period=2026-10"
+    client.post(url)
+    key = client.get(f"/api/lectura/assessments/{gone}").json()["audioUrl"].split("/get/")[1]
+
+    assert client.delete(f"/api/lectura/assessments/{gone}").status_code == 204
+    assert fake_storage.deleted == [key]
+    assert client.get(f"/api/lectura/assessments/{gone}").status_code == 404
+    assert client.get(f"/api/lectura/assessments/{keep}").status_code == 200  # the rest of the course stays
+    assert client.get(url).json() is None  # the synthesis counted the deleted one
+
+    with worker.db.engine.begin() as conn:  # a running job blocks the deletion
+        repository.create_job(conn, keep, "prosody")
+        conn.execute(update(db.reading_jobs).values(status="running"))
+    assert client.delete(f"/api/lectura/assessments/{keep}").status_code == 409
 
 
 def test_requeue_and_missing_prosody(client, fake_storage, engine_ok):

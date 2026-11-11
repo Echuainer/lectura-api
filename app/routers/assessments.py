@@ -174,14 +174,15 @@ def complete(assessment_id: int, body: CompleteIn, ctx: AuthContext = Depends(st
 
 @router.delete("/assessments/{assessment_id}", status_code=204)
 def discard(assessment_id: int, ctx: AuthContext = Depends(staff), conn=Depends(get_conn)):
-    """Discards an unfinished assessment and its audio."""
+    """Deletes an assessment (draft or saved) and its audio. Reports are computed live, so they update by themselves."""
     a = assessment_or_404(conn, ctx.institution_id, assessment_id)
     _can_edit(ctx, a)
-    if a["status"] != "draft":
-        raise HTTPException(409, "Solo se pueden descartar evaluaciones sin terminar")
-    if (repository.active_job(conn, assessment_id, "analyze") or {}).get("status") == "running":
+    if any((repository.active_job(conn, assessment_id, kind) or {}).get("status") == "running"
+           for kind in ("analyze", "prosody")):
         raise HTTPException(409, "El audio se está analizando; espere a que termine")
     repository.delete_assessment(conn, assessment_id)
+    if a["status"] == "complete" and a["course_id"] and a["period"]:  # the stored synthesis counted this assessment
+        repository.delete_synthesis(conn, ctx.institution_id, a["course_id"], a["period"])
     if a["audio_key"]:
         try:
             storage.delete(a["audio_key"])
