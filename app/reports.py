@@ -170,7 +170,8 @@ def course_synthesis(conn, institution_id: int, course: dict, period: str, user_
     actual = reportes.ultima_por_estudiante(del_curso[del_curso["periodo"] == period])
     previous = [p for p in course_periods(del_curso) if p < period]
     anterior = reportes.ultima_por_estudiante(del_curso[del_curso["periodo"] == previous[0]]) if previous else None
-    content = informes.informe_curso(course["name"], synthesis_summary(actual, anterior))
+    content = informes.informe_curso(course["name"], synthesis_summary(actual, anterior),
+                                     repository.institution_config(conn, institution_id, "IA_PROVIDER"))
     repository.save_synthesis(conn, institution_id, course["id"], period, content, user_id, email)
     return repository.get_synthesis(conn, institution_id, course["id"], period)
 

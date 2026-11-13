@@ -4,12 +4,9 @@ import logging
 import os
 import time
 
-import anthropic
-
 from core import escalas
+from core.redactores import redactor
 
-MODELO_ALUMNO = "claude-haiku-5-5"
-MODELO_CURSO = "claude-sonnet-5-5"
 MAX_LISTA = 15
 log = logging.getLogger("lectura.ai")  # never the prompt or the response; userId comes from the request context
 
@@ -55,12 +52,6 @@ Usa estos encabezados en negrita, en este orden:
 **Próximo paso**: frecuencia sugerida de medición y una meta de PCPM para la próxima medición, por grupo."""
 
 
-def _cliente() -> anthropic.Anthropic:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("Falta ANTHROPIC_API_KEY en el archivo .env")
-    return anthropic.Anthropic()
-
-
 def construir_datos_alumno(nivel, metricas: dict, categoria, expresion, detalle: list,
                           marco: dict | None = None) -> dict:
     """Arma el JSON del alumno: solo cifras y listas de palabras, sin nombre."""
@@ -85,38 +76,31 @@ def construir_datos_alumno(nivel, metricas: dict, categoria, expresion, detalle:
     return datos
 
 
-def _generar(modelo: str, sistema: str, datos: dict, max_tokens: int, op: str = "report") -> str:
+def _generar(rol: str, sistema: str, datos: dict, max_tokens: int, op: str = "report", proveedor: str | None = None) -> str:
     contenido = "Datos (JSON):\n" + json.dumps(datos, ensure_ascii=False)
+    redactor_ = redactor(proveedor)
     for intento in range(2):
         started = time.perf_counter()
         try:
-            respuesta = _cliente().messages.create(
-                model=modelo,
-                max_tokens=max_tokens,
-                system=[{"type": "text", "text": sistema, "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": contenido}],
-            )
+            r = redactor_.completar(rol, sistema, contenido, max_tokens)
         except Exception:
             log.warning("ai call failed", exc_info=True, extra={
-                "op": op, "model": modelo, "durationMs": round((time.perf_counter() - started) * 1000, 1)})
+                "op": op, "provider": type(redactor_).__name__, "durationMs": round((time.perf_counter() - started) * 1000, 1)})
             raise
-        uso = getattr(respuesta, "usage", None)
         log.info("ai call", extra={
-            "op": op, "model": modelo, "inputTokens": getattr(uso, "input_tokens", None),
-            "outputTokens": getattr(uso, "output_tokens", None),
+            "op": op, "model": r.modelo, "inputTokens": r.tokens_entrada, "outputTokens": r.tokens_salida,
             "durationMs": round((time.perf_counter() - started) * 1000, 1)})
-        texto = "".join(b.text for b in respuesta.content if b.type == "text")
-        if respuesta.stop_reason != "max_tokens":
-            return texto
+        if not r.cortado:
+            return r.texto
         # cortado: se reintenta una vez con más margen y pidiendo brevedad, en vez de entregar un texto a medias
         max_tokens *= 2
         contenido += "\n\nSé más breve: el informe anterior no cupo. Termina todas las secciones."
-    return texto + "\n\n_(El informe quedó cortado por largo; vuelva a generarlo.)_"
+    return r.texto + "\n\n_(El informe quedó cortado por largo; vuelva a generarlo.)_"
 
 
-def informe_alumno(datos: dict) -> str:
-    return _generar(MODELO_ALUMNO, SISTEMA_ALUMNO, datos, 700, "student_report")
+def informe_alumno(datos: dict, proveedor: str | None = None) -> str:
+    return _generar("alumno", SISTEMA_ALUMNO, datos, 700, "student_report", proveedor)
 
 
-def informe_curso(curso: str, resumen: dict) -> str:
-    return _generar(MODELO_CURSO, SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000, "course_synthesis")
+def informe_curso(curso: str, resumen: dict, proveedor: str | None = None) -> str:
+    return _generar("curso", SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000, "course_synthesis", proveedor)
