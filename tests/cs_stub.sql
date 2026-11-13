@@ -1,5 +1,7 @@
 -- Minimal copy of the api-colegio-smart tables that lectura-api reads (only for tests against Postgres).
 CREATE TABLE institutions (id BIGSERIAL PRIMARY KEY);
+CREATE TABLE institutions_configurations (id BIGSERIAL PRIMARY KEY, institution_id BIGINT REFERENCES institutions(id),
+  key VARCHAR(255), value VARCHAR(255), type VARCHAR(50));
 CREATE TABLE users (id BIGSERIAL PRIMARY KEY, institution_id BIGINT REFERENCES institutions(id),
                     password_changed_at TIMESTAMPTZ);
 CREATE TABLE cycles_types_levels (id BIGSERIAL PRIMARY KEY, name TEXT);

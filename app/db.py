@@ -21,6 +21,10 @@ cs_metadata = MetaData()
 # --- api-colegio-smart (read-only) ------------------------------------------------------------
 
 cs_institutions = Table("institutions", cs_metadata, Column("id", Id, primary_key=True))
+# one row per institution and key (e.g. IA_PROVIDER), edited from the platform's Configuraciones screen
+cs_institutions_configurations = Table(
+    "institutions_configurations", cs_metadata, Column("id", Id, primary_key=True),
+    Column("institution_id", Id), Column("key", String), Column("value", String))
 cs_users = Table(
     "users", cs_metadata,
     Column("id", Id, primary_key=True),

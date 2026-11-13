@@ -291,6 +291,12 @@ def latest_job(conn: Connection, assessment_id: int, kind: str) -> dict | None:
     return dict(row._mapping) if row else None
 
 
+def institution_config(conn: Connection, institution_id: int, key: str) -> str | None:
+    """The value the school's admin set in the platform's Configuraciones, or None."""
+    c = db.cs_institutions_configurations
+    return conn.execute(select(c.c.value).where(and_(c.c.institution_id == institution_id, c.c.key == key))).scalar()
+
+
 # --- Course synthesis ----------------------------------------------------------------------------
 
 def get_synthesis(conn: Connection, institution_id: int, course_id: int, period: str) -> dict | None:

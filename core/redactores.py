@@ -1,6 +1,7 @@
 """Proveedores de IA que redactan los informes, intercambiables (patrón Strategy).
 
 `informes` solo conoce `Redactor`; elegir Claude o DeepSeek es cambiar `LECTURA_AI_PROVIDER` (claude por defecto)."""
+import logging
 import os
 from dataclasses import dataclass
 from typing import Protocol
@@ -8,6 +9,7 @@ from typing import Protocol
 import anthropic
 import httpx
 
+log = logging.getLogger("lectura.ai")
 MODELOS_CLAUDE = {"alumno": "claude-haiku-5-5", "curso": "claude-sonnet-5-5"}
 MODELO_DEEPSEEK = "deepseek-flash"
 
@@ -59,8 +61,19 @@ class RedactorDeepSeek:
 REDACTORES: dict[str, type] = {"claude": RedactorClaude, "deepseek": RedactorDeepSeek}
 
 
-def redactor() -> Redactor:
-    nombre = os.environ.get("LECTURA_AI_PROVIDER", "claude").strip().lower()
+ALIAS = {"anthropic": "claude"}  # the platform's IA_PROVIDER calls Claude "anthropic"
+
+
+def redactor(institucion: str | None = None) -> Redactor:
+    """The school's IA_PROVIDER (set in the platform) wins; without it, LECTURA_AI_PROVIDER; without that, Claude.
+    A school value this service does not implement (the platform also knows "kimi") falls back to the default."""
+    nombre = (institucion or "").strip().lower()
+    nombre = ALIAS.get(nombre, nombre)
+    if nombre not in REDACTORES:
+        if nombre:
+            log.warning("IA_PROVIDER de la institución no soportado aquí: %r", nombre)
+        nombre = os.environ.get("LECTURA_AI_PROVIDER", "claude").strip().lower()
+        nombre = ALIAS.get(nombre, nombre)
     if nombre not in REDACTORES:
         raise RuntimeError(f"LECTURA_AI_PROVIDER desconocido: {nombre!r} (usa {' o '.join(REDACTORES)})")
     return REDACTORES[nombre]()

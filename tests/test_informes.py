@@ -17,7 +17,7 @@ class Falso:
 
 
 def _usar(monkeypatch, falso):
-    monkeypatch.setattr(informes, "redactor", lambda: falso)
+    monkeypatch.setattr(informes, "redactor", lambda proveedor=None: falso)
 
 
 def test_informe_cortado_se_reintenta_con_mas_margen(monkeypatch):
@@ -75,3 +75,12 @@ def test_deepseek_sin_clave_falla_visible(monkeypatch):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="DEEPSEEK_API_KEY"):
         redactores.RedactorDeepSeek().completar("alumno", "s", "c", 10)
+
+
+def test_la_institucion_manda_sobre_la_variable(monkeypatch):
+    monkeypatch.setenv("LECTURA_AI_PROVIDER", "claude")
+    assert isinstance(redactores.redactor("deepseek"), redactores.RedactorDeepSeek)
+    assert isinstance(redactores.redactor("anthropic"), redactores.RedactorClaude)
+    monkeypatch.setenv("LECTURA_AI_PROVIDER", "deepseek")
+    assert isinstance(redactores.redactor("kimi"), redactores.RedactorDeepSeek)  # no soportado aquí: cae al valor por defecto
+    assert isinstance(redactores.redactor(None), redactores.RedactorDeepSeek)

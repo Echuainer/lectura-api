@@ -171,7 +171,8 @@ def complete(assessment_id: int, body: CompleteIn, ctx: AuthContext = Depends(st
     report_error = None
     if body.generateReport:
         try:
-            repository.update_assessment(conn, assessment_id, report=service.student_report(a))
+            repository.update_assessment(conn, assessment_id, report=service.student_report(
+                a, repository.institution_config(conn, ctx.institution_id, "IA_PROVIDER")))
         except Exception as e:
             log.exception("AI report failed", extra={"assessmentId": assessment_id})
             report_error = f"El informe con IA falló: {e}"

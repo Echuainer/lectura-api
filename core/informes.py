@@ -76,16 +76,16 @@ def construir_datos_alumno(nivel, metricas: dict, categoria, expresion, detalle:
     return datos
 
 
-def _generar(rol: str, sistema: str, datos: dict, max_tokens: int, op: str = "report") -> str:
+def _generar(rol: str, sistema: str, datos: dict, max_tokens: int, op: str = "report", proveedor: str | None = None) -> str:
     contenido = "Datos (JSON):\n" + json.dumps(datos, ensure_ascii=False)
-    proveedor = redactor()
+    redactor_ = redactor(proveedor)
     for intento in range(2):
         started = time.perf_counter()
         try:
-            r = proveedor.completar(rol, sistema, contenido, max_tokens)
+            r = redactor_.completar(rol, sistema, contenido, max_tokens)
         except Exception:
             log.warning("ai call failed", exc_info=True, extra={
-                "op": op, "provider": type(proveedor).__name__, "durationMs": round((time.perf_counter() - started) * 1000, 1)})
+                "op": op, "provider": type(redactor_).__name__, "durationMs": round((time.perf_counter() - started) * 1000, 1)})
             raise
         log.info("ai call", extra={
             "op": op, "model": r.modelo, "inputTokens": r.tokens_entrada, "outputTokens": r.tokens_salida,
@@ -98,9 +98,9 @@ def _generar(rol: str, sistema: str, datos: dict, max_tokens: int, op: str = "re
     return r.texto + "\n\n_(El informe quedó cortado por largo; vuelva a generarlo.)_"
 
 
-def informe_alumno(datos: dict) -> str:
-    return _generar("alumno", SISTEMA_ALUMNO, datos, 700, "student_report")
+def informe_alumno(datos: dict, proveedor: str | None = None) -> str:
+    return _generar("alumno", SISTEMA_ALUMNO, datos, 700, "student_report", proveedor)
 
 
-def informe_curso(curso: str, resumen: dict) -> str:
-    return _generar("curso", SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000, "course_synthesis")
+def informe_curso(curso: str, resumen: dict, proveedor: str | None = None) -> str:
+    return _generar("curso", SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000, "course_synthesis", proveedor)

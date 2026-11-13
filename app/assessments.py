@@ -133,8 +133,8 @@ def edit_fields(a: dict, changes: dict) -> dict:
     return fields
 
 
-def student_report(a: dict) -> str:
+def student_report(a: dict, proveedor: str | None = None) -> str:
     """Short AI report. Only figures and word lists go to the API, never the student's name."""
     r, key = a["result"], framework_key(a["framework"])
     data = informes.construir_datos_alumno(a["level"], r, a["category"], a["expression"], r["detalle"], MARCOS[key])
-    return informes.informe_alumno(data)
+    return informes.informe_alumno(data, proveedor)

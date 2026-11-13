@@ -35,9 +35,11 @@ def engine_ok(monkeypatch):
     fake = types.SimpleNamespace(VERSION="v-test", evaluar=lambda path, detalle: {
         "version": "v-test", "puntajes": [3, 3, 2, 4], "medidas": {}, "calidad": {"snr_db": 20.0}})
     monkeypatch.setattr(worker, "_prosodia", lambda: fake)
-    monkeypatch.setattr("core.informes.informe_alumno", lambda datos: f"Informe nivel {datos['nivel']}")
+    monkeypatch.setattr("core.informes.informe_alumno", lambda datos, proveedor=None: f"Informe nivel {datos['nivel']}")
     fake.summaries = []
-    def course_report(curso, resumen):
+    fake.providers = []
+    def course_report(curso, resumen, proveedor=None):
+        fake.providers.append(proveedor)
         fake.summaries.append(resumen)
         return f"Síntesis {curso}: {resumen['n_evaluados']}"
     monkeypatch.setattr("core.informes.informe_curso", course_report)
@@ -462,3 +464,13 @@ def test_worker_logs_job_lifecycle(client, fake_storage, engine_ok, caplog):
     w.stop()
     ready = next(r for r in caplog.records if r.getMessage() == "job queue ready")
     assert ready.requeued == 0 and ready.prosodyEnqueued == 0 and ready.levelno == logging.INFO
+
+
+def test_synthesis_uses_the_ia_provider_set_for_the_institution(client, fake_storage, engine_ok):
+    _completed(client, fake_storage, 1000, "2026-10")
+    url = "/api/lectura/reports/courses/100/synthesis?period=2026-10"
+    client.post(url)
+    with worker.db.engine.begin() as conn:  # what the admin saves in the platform's Configuraciones
+        conn.execute(db.cs_institutions_configurations.insert().values(institution_id=1, key="IA_PROVIDER", value="deepseek"))
+    client.post(url)
+    assert engine_ok.providers == [None, "deepseek"]
