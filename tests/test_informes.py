@@ -84,3 +84,41 @@ def test_la_institucion_manda_sobre_la_variable(monkeypatch):
     monkeypatch.setenv("LECTURA_AI_PROVIDER", "deepseek")
     assert isinstance(redactores.redactor("kimi"), redactores.RedactorDeepSeek)  # no soportado aquí: cae al valor por defecto
     assert isinstance(redactores.redactor(None), redactores.RedactorDeepSeek)
+
+
+def _datos(**metricas):
+    m = {"pcpm": 26, "precision_pct": 90.9, "errores": 4, "palabras_leidas": 44, "sustituciones": 3, "omisiones": 1,
+         "inserciones": 7, "pausas_inesperadas": 22} | metricas
+    return {"nivel": 1, "categoria": "Lenta", "expresion": 1, "marco": "Astoreca", "fluidez_categoria": "Lectura silábica",
+            "metricas": m, "sustituciones": [{"texto": "bote", "leido": "voel"}], "omisiones": ["tomate"]}
+
+
+def test_informe_estandar_bajo_lo_esperado():
+    perfil = {"Velocidad": 90, "Precisión": 96, "Fluidez": 33, "Continuidad": 45}
+    texto = informes.informe_estandar(_datos(), perfil)
+    assert "Velocidad: 26 palabras correctas por minuto" in texto and "90 % de lo esperado (bajo lo esperado)" in texto
+    assert "Fluidez: lectura silábica, 33 % de lo esperado (muy por debajo de lo esperado)" in texto
+    assert "El eje más descendido es fluidez (33 %)" in texto
+    # solo los dos patrones de mayor tasa, sin ejemplos del estudiante
+    assert "Predominan las pausas inesperadas (50 por cada 100 palabras, tasa alta)" in texto
+    assert "Le siguen las inserciones (16 por cada 100 palabras, tasa alta)" in texto
+    assert "sustituciones (" not in texto and "bote" not in texto and "tomate" not in texto
+    assert "1) Fraseo" in texto and "(3 veces por semana, 15 minutos)" in texto and "2) Lectura atenta" in texto
+    assert "3) Fluidez:" in texto and "4)" not in texto
+    assert "especialista" in texto
+
+
+def test_informe_estandar_logrado_sin_patrones():
+    perfil = {"Velocidad": 120, "Precisión": 104, "Fluidez": 100, "Continuidad": 101}
+    m = dict(pcpm=80, precision_pct=99.0, errores=0, sustituciones=0, omisiones=0, inserciones=1, pausas_inesperadas=2,
+             palabras_leidas=80)
+    texto = informes.informe_estandar(_datos(**m), perfil)
+    assert "cumple lo esperado para el curso en todos los ejes" in texto
+    assert "No hay tipos de error con una tasa relevante" in texto
+    assert "1) Enriquecimiento" in texto and "especialista" not in texto
+
+
+def test_estrategia_nivel_segun_tasa():
+    e = informes.ESTRATEGIAS["sustituciones"]
+    assert [e.nivel(t) for t in (2, 3, 8)] == [0, 1, 2]
+    assert e.plan(4).endswith("(2 veces por semana, 10 minutos).") and e.plan(9).endswith("(diaria, 10 minutos).")

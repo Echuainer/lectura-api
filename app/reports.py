@@ -209,8 +209,19 @@ def course_texts_report(conn, institution_id: int, course: dict, text_id: int | 
     return clean({"course": course, "texts": texts, "detail": detail})
 
 
+def _standard_report(f) -> str | None:
+    """Rule-based report (no AI) for one assessment, with the effective WCPM (the teacher's adjustment wins)."""
+    if not isinstance(f["resultado_json"], str):
+        return None
+    r = json.loads(f["resultado_json"])
+    expression = None if pd.isna(f["expresion"]) else int(f["expresion"])
+    data = informes.construir_datos_alumno(int(f["nivel"]), r | {"pcpm": f["pcpm_efectivo"]}, f["categoria"], expression,
+                                           r.get("detalle", []), MARCOS[f["marco"]])
+    return informes.informe_estandar(data, reportes.perfil_radar(f, MARCOS[f["marco"]], PRECISION_MIN))
+
+
 def student_report(conn, institution_id: int, student: dict) -> dict:
-    """Results · By student: history, radar, difficult words and AI reports."""
+    """Results · By student: history, radar, difficult words and reports (AI and standard)."""
     h = prepared(conn, institution_id, student_id=student["id"])
     if h.empty:
         return {"student": student, "history": [], "empty": True}
@@ -225,7 +236,7 @@ def student_report(conn, institution_id: int, student: dict) -> dict:
         history.append(_student_row(f) | {
             "rasinski": None if not ras else {"total": ras[0], "label": ras[1]},
             "htPercentile": None if not ht else {"band": ht[0], "moment": ht[1], "p50": ht[2]},
-            "observation": f["observacion"], "report": f["informe"]})
+            "observation": f["observacion"], "report": f["informe"], "standardReport": _standard_report(f)})
     profile = lambda f: reportes.perfil_radar(f, MARCOS[f["marco"]], PRECISION_MIN)
     radar = [{"label": "Última", "date": h["fecha"].iloc[-1], "values": profile(h.iloc[-1])}]
     if len(h) > 1:

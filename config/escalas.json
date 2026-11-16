@@ -4,7 +4,7 @@
   "marcos": {
     "mineduc": {
       "nombre": "Mineduc / Fundar (1° a 8°)",
-      "fuente": "Tabla de desempeño de velocidad lectora (Mineduc / Fundar). 1° a 4° según la tabla publicada en Educando Juntos; es el único marco con 1° básico.",
+      "fuente": "Tabla de desempeño de velocidad lectora (Mineduc / Fundar). 1° a 6°: cortes verificados en Educando Juntos (https://educandojuntos.cl/recursos/evaluacion-de-la-velocidad-lectora-vl/). 7° y 8°: tabla difundida por terceros, sin fuente oficial verificada. Expectativa desde Media baja: la tabla no la define; respaldo indirecto en el Manual de Gestión Pedagógica Astoreca 2015 (meta: al menos 60% del curso en media baja o superior). Es el único marco con 1° básico.",
       "unidad": "palabras correctas por minuto (PCPM)",
       "adecuado_desde": "Media baja",
       "niveles": {
@@ -28,7 +28,7 @@
     },
     "astoreca": {
       "nombre": "Astoreca · Calidad Lectora (1° a 8°)",
-      "fuente": "Ficha técnica Calidad Lectora 2° a 8°, Astoreca Evaluaciones. 1°: cortes de velocidad de Mineduc / Fundar (la ficha no incluye 1°).",
+      "fuente": "Ficha técnica Calidad Lectora 2° a 8°, Astoreca Evaluaciones (https://www.astoreca.cl/wp-content/uploads/2025/11/Ficha-Tecnica-Calidad-Lectora-2-a-8-final.pdf): cortes, expectativa mínima Media alta y fluidez mínima por grado verificados. 1°: cortes de velocidad de Mineduc / Fundar y expectativa Media baja, decisión interna (la ficha no incluye 1°).",
       "unidad": "palabras correctamente leídas en 1 minuto (PPM)",
       "adecuado_desde": "Media alta",
       "adecuado_desde_por_nivel": {"1": "Media baja"},
