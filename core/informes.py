@@ -99,7 +99,7 @@ def _generar(rol: str, sistema: str, datos: dict, max_tokens: int, op: str = "re
 
 
 def informe_alumno(datos: dict, proveedor: str | None = None) -> str:
-    return _generar("alumno", SISTEMA_ALUMNO, datos, 700, "student_report", proveedor)
+    return _generar("alumno", SISTEMA_ALUMNO, datos, 8000, "student_report", proveedor)
 
 
 def informe_curso(curso: str, resumen: dict, proveedor: str | None = None) -> str:
