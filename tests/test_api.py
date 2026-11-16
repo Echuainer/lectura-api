@@ -414,6 +414,7 @@ def test_reports(client, fake_storage, engine_ok):
     st = client.get("/api/lectura/reports/students/1000").json()
     assert [h["period"] for h in st["history"]] == ["2026-04", "2026-10"]
     assert [x["label"] for x in st["radar"]["series"]] == ["Primera", "Última"]
+    assert all(h["standardReport"].startswith("**Diagnóstico**") for h in st["history"])
     assert client.get("/api/lectura/reports/students/2000").status_code == 404
 
     director = make_client(token(user_id=12, role=security.DIRECTIVO))

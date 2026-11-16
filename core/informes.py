@@ -104,3 +104,126 @@ def informe_alumno(datos: dict, proveedor: str | None = None) -> str:
 
 def informe_curso(curso: str, resumen: dict, proveedor: str | None = None) -> str:
     return _generar("curso", SISTEMA_CURSO, {"curso": curso, "resumen": resumen}, 8000, "course_synthesis", proveedor)
+
+
+# --- Informe estándar (sin IA) ------------------------------------------------------------------
+# Mismas tres secciones que el informe con IA, armadas con reglas fijas: las mismas cifras dan siempre el mismo texto.
+# Diagnóstico: % de logro por eje (perfil_radar). Patrones: los tipos de error con mayor tasa por cada 100 palabras.
+# Sugerencias: plan acotado; cada tipo de error es una estrategia con su acción según la tasa (moderada o alta).
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Estrategia:
+    nombre: str
+    sugiere: str
+    moderada: float  # tasa (por 100 palabras) desde la que cuenta como patrón
+    alta: float
+    accion: str
+    frecuencia: tuple[str, str]  # (moderada, alta)
+
+    def nivel(self, tasa: float) -> int:
+        """0 = no es patrón, 1 = moderada, 2 = alta."""
+        return 2 if tasa >= self.alta else 1 if tasa >= self.moderada else 0
+
+    def plan(self, tasa: float) -> str:
+        return f"{self.accion} ({self.frecuencia[self.nivel(tasa) - 1]})."
+
+
+ESTRATEGIAS = {
+    "sustituciones": Estrategia(
+        "sustituciones", "una decodificación aún insegura: cambia palabras por otras parecidas", 3, 8,
+        "Decodificación: lectura de listas cortas de palabras del texto y pseudopalabras, separando en sílabas",
+        ("2 veces por semana, 10 minutos", "diaria, 10 minutos")),
+    "omisiones": Estrategia(
+        "omisiones", "un seguimiento visual inestable de la línea o una lectura apresurada", 3, 8,
+        "Seguimiento: lectura con marcador bajo la línea, verificando que se lea cada palabra",
+        ("2 veces por semana, 10 minutos", "diaria, 10 minutos")),
+    "inserciones": Estrategia(
+        "inserciones", "que anticipa o completa palabras sin verificar lo que está escrito", 5, 12,
+        "Lectura atenta: leer frases breves y comparar con el texto lo que se dijo",
+        ("2 veces por semana, 10 minutos", "3 veces por semana, 10 minutos")),
+    "repeticiones": Estrategia(
+        "repeticiones", "que relee para sostener la decodificación y el sentido", 5, 12,
+        "Lectura repetida: leer el mismo texto breve tres veces, registrando el avance",
+        ("2 veces por semana, 10 minutos", "3 veces por semana, 10 minutos")),
+    "autocorrecciones": Estrategia(
+        "autocorrecciones", "que monitorea su lectura, aunque la decodificación aún es lenta", 5, 12,
+        "Automatización: lectura en voz alta de palabras frecuentes hasta leerlas sin corregir",
+        ("2 veces por semana, 10 minutos", "3 veces por semana, 10 minutos")),
+    "pausas_inesperadas": Estrategia(
+        "pausas inesperadas", "una lectura fragmentada, palabra a palabra, sin agrupar en frases", 10, 25,
+        "Fraseo: lectura en eco por frases, marcando con una barra dónde se respira",
+        ("2 veces por semana, 10 minutos", "3 veces por semana, 15 minutos")),
+}
+
+# Ejes bajo lo esperado que ningún patrón de error ya cubre.
+ACCIONES_EJE = {
+    "Velocidad": "Velocidad: lectura repetida cronometrada de un texto del nivel, registrando las palabras correctas por minuto "
+                 "(diaria, 10 minutos).",
+    "Fluidez": "Fluidez: el adulto modela una frase con buena entonación y el estudiante la repite respetando la puntuación "
+               "(2 veces por semana, 10 minutos).",
+}
+ACCION_LOGRADO = ("Enriquecimiento: lectura en voz alta de textos variados y más extensos, cuidando la expresión "
+                  "(en clase regular).")
+MAX_PATRONES = 2
+MAX_ACCIONES = 3
+
+
+def _cifra(x, decimales=0) -> str:
+    return f"{x:.{decimales}f}".replace(".", ",") if decimales else str(round(x))
+
+
+def _logro(pct) -> str:
+    return "logra lo esperado" if pct >= 100 else "bajo lo esperado" if pct >= 70 else "muy por debajo de lo esperado"
+
+
+def tasas_error(metricas: dict) -> dict[str, float]:
+    """Errores por cada 100 palabras leídas, por tipo."""
+    leidas = metricas.get("palabras_leidas") or 0
+    return {k: (metricas.get(k) or 0) / leidas * 100 if leidas else 0.0 for k in ESTRATEGIAS}
+
+
+def informe_estandar(datos: dict, perfil: dict) -> str:
+    """Informe breve sin IA. `datos` sale de `construir_datos_alumno` (con marco) y `perfil` de `reportes.perfil_radar`."""
+    m = datos["metricas"]
+
+    ejes = {
+        "Velocidad": f"{_cifra(m.get('pcpm') or 0)} palabras correctas por minuto (categoría \"{datos['categoria']}\", "
+                     f"marco {datos['marco']})",
+        "Precisión": f"{_cifra(m.get('precision_pct') or 0, 1)} % de palabras bien leídas",
+        "Fluidez": (datos.get("fluidez_categoria") or "").lower(),
+        "Continuidad": "lectura sin repeticiones, autocorrecciones, inserciones ni pausas fuera de puntuación",
+    }
+    con_dato = {e: p for e, p in perfil.items() if p is not None}
+    diagnostico = [f"{e}: {ejes[e]}, {p} % de lo esperado ({_logro(p)})." for e, p in con_dato.items()]
+    bajos = sorted((p, e) for e, p in con_dato.items() if p < 100)
+    if not bajos:
+        diagnostico.append("En conjunto, cumple lo esperado para el curso en todos los ejes.")
+    else:
+        diagnostico.append(f"El eje más descendido es {bajos[0][1].lower()} ({bajos[0][0]} %).")
+
+    tasas = tasas_error(m)
+    patrones = sorted((k for k in ESTRATEGIAS if ESTRATEGIAS[k].nivel(tasas[k])),
+                      key=lambda k: tasas[k] / ESTRATEGIAS[k].alta, reverse=True)[:MAX_PATRONES]
+    if not patrones:
+        texto_patrones = "No hay tipos de error con una tasa relevante en esta lectura."
+    else:
+        texto_patrones = " ".join(
+            f"{'Predominan' if i == 0 else 'Le siguen'} las {ESTRATEGIAS[k].nombre} ({_cifra(tasas[k])} por cada 100 palabras, "
+            f"tasa {'alta' if ESTRATEGIAS[k].nivel(tasas[k]) == 2 else 'moderada'}), lo que sugiere {ESTRATEGIAS[k].sugiere}."
+            for i, k in enumerate(patrones))
+
+    acciones = [ESTRATEGIAS[k].plan(tasas[k]) for k in patrones]
+    acciones += [ACCIONES_EJE[e] for _, e in bajos if e in ACCIONES_EJE]
+    if not acciones:
+        acciones.append(ACCION_LOGRADO)
+    acciones = list(dict.fromkeys(acciones))[:MAX_ACCIONES]
+    plan = " ".join(f"{i}) {a}" for i, a in enumerate(acciones, 1))
+    plan += " Volver a medir en 4 a 6 semanas para comparar."
+    if any(ESTRATEGIAS[k].nivel(tasas[k]) == 2 for k in patrones) and len([1 for p, _ in bajos if p < 70]) >= 2:
+        plan += " Si los patrones persisten pese al apoyo, considerar evaluación con un especialista (psicopedagogo o fonoaudiólogo)."
+
+    return (f"**Diagnóstico**: {' '.join(diagnostico)}\n\n**Patrones de error**: {texto_patrones}\n\n"
+            f"**Sugerencias**: {plan}")
